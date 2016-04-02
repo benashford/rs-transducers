@@ -1,0 +1,6 @@
+[package]
+name = "rs_transducers"
+version = "0.1.0"
+authors = ["Ben Ashford"]
+
+[dependencies]
