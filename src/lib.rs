@@ -46,8 +46,8 @@ impl<'a, A, B, C> Transducer<A, C> for ComposedTransducer<'a, A, B, C> {
     }
 }
 
-fn compose<'a, A, B, C>(a: &'a Transducer<A, B>,
-                        b: &'a Transducer<B, C>) -> ComposedTransducer<'a, A, B, C> {
+pub fn compose<'a, A, B, C>(b: &'a Transducer<B, C>,
+                            a: &'a Transducer<A, B>) -> ComposedTransducer<'a, A, B, C> {
     ComposedTransducer {
         a: a,
         b: b
@@ -80,7 +80,7 @@ mod test {
         let source = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let add_five = transducers::map(|x| x + 5);
         let filter_even = transducers::filter(|x| x % 2 == 0);
-        let combined = super::compose(&add_five, &filter_even);
+        let combined = super::compose(&filter_even, &add_five);
         let result = source.trans_ref(combined);
         assert_eq!(vec![6, 8, 10, 12, 14], result);
     }
