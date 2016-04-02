@@ -13,7 +13,7 @@ pub trait Transducer<I, O> {
 #[cfg(test)]
 mod test {
     use super::transducers;
-    use super::applications::vec::Ref;
+    use super::applications::vec::{Drain, Ref};
 
     #[test]
     fn test_vec_ref() {
@@ -21,5 +21,13 @@ mod test {
         let transducer = transducers::map(|x| x + 1);
         let result = source.trans_ref(transducer);
         assert_eq!(vec![2, 3, 4], result);
+    }
+
+    #[test]
+    fn test_vec_drain() {
+        let source = vec![1, 2, 3, 4, 5];
+        let transducer = transducers::filter(|x| x % 2 == 0);
+        let result = source.trans_drain(transducer);
+        assert_eq!(vec![2, 4], result);
     }
 }

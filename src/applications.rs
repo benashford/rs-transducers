@@ -28,4 +28,32 @@ pub mod vec {
             result
         }
     }
+
+    pub trait Drain {
+        type Input;
+
+        fn trans_drain<T, O>(mut self, transducer: T) -> Vec<O>
+            where T: Transducer<Self::Input, O>;
+    }
+
+    impl<X> Drain for Vec<X> {
+        type Input = X;
+
+        fn trans_drain<T, O>(mut self, transducer: T) -> Vec<O>
+            where T: Transducer<Self::Input, O> {
+
+            let mut result = Vec::with_capacity(self.len());
+            for val in self.drain(..) {
+                match transducer.accept(val) {
+                    None => (),
+                    Some(r) => { result.push(r); }
+                }
+            }
+            match transducer.complete() {
+                None => (),
+                Some(r) => { result.push(r); }
+            }
+            result
+        }
+    }
 }
