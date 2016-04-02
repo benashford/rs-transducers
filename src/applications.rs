@@ -23,7 +23,7 @@ pub mod vec {
             }
             match transducer.complete() {
                 None => (),
-                Some(r) => { result.push(r); }
+                Some(mut r) => { result.append(&mut r); }
             }
             result
         }
@@ -51,7 +51,7 @@ pub mod vec {
             }
             match transducer.complete() {
                 None => (),
-                Some(r) => { result.push(r); }
+                Some(mut r) => { result.append(&mut r); }
             }
             result
         }
