@@ -1,5 +1,5 @@
 pub mod vec {
-    use ::Transducer;
+    use ::{Transducer, TransductionResult};
 
     pub trait Ref {
         type Input;
@@ -16,16 +16,19 @@ pub mod vec {
 
             let mut result = Vec::with_capacity(self.len());
             for val in self {
-                match transducer.accept(val) {
-                    None => (),
-                    Some(r) => { result.push(r); }
+                match transducer.accept(Some(val)) {
+                    TransductionResult::End => { return result; },
+                    TransductionResult::None => (),
+                    TransductionResult::Some(r) => { result.push(r); }
                 }
             }
-            match transducer.complete() {
-                None => (),
-                Some(mut r) => { result.append(&mut r); }
+            loop {
+                match transducer.accept(None) {
+                    TransductionResult::End => { return result; },
+                    TransductionResult::None => (),
+                    TransductionResult::Some(r) => { result.push(r); }
+                }
             }
-            result
         }
     }
 
@@ -44,16 +47,19 @@ pub mod vec {
 
             let mut result = Vec::with_capacity(self.len());
             for val in self.drain(..) {
-                match transducer.accept(val) {
-                    None => (),
-                    Some(r) => { result.push(r); }
+                match transducer.accept(Some(val)) {
+                    TransductionResult::End => { return result; },
+                    TransductionResult::None => (),
+                    TransductionResult::Some(r) => { result.push(r); }
                 }
             }
-            match transducer.complete() {
-                None => (),
-                Some(mut r) => { result.append(&mut r); }
+            loop {
+                match transducer.accept(None) {
+                    TransductionResult::End => { return result; },
+                    TransductionResult::None => (),
+                    TransductionResult::Some(r) => { result.push(r); }
+                }
             }
-            result
         }
     }
 }

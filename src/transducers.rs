@@ -1,6 +1,6 @@
 use std::mem;
 
-use super::Transducer;
+use super::{Transducer, TransductionResult};
 
 pub struct MapTransducer<F> {
     f: F
@@ -10,8 +10,11 @@ impl<I, O, F> Transducer<I, O> for MapTransducer<F>
     where F: Fn(I) -> O {
 
     #[inline]
-    fn accept(&mut self, value: I) -> Option<O> {
-        Some((self.f)(value))
+    fn accept(&mut self, value: Option<I>) -> TransductionResult<O> {
+        match value {
+            None => TransductionResult::End,
+            Some(value) => TransductionResult::Some((self.f)(value))
+        }
     }
 }
 
@@ -31,11 +34,16 @@ impl<T, F> Transducer<T, T> for FilterTransducer<F>
     where F: Fn(&T) -> bool {
 
     #[inline]
-    fn accept(&mut self, value: T) -> Option<T> {
-        if (self.f)(&value) {
-            Some(value)
-        } else {
-            None
+    fn accept(&mut self, value: Option<T>) -> TransductionResult<T> {
+        match value {
+            None => TransductionResult::End,
+            Some(value) => {
+                if (self.f)(&value) {
+                    TransductionResult::Some(value)
+                } else {
+                    TransductionResult::None
+                }
+            }
         }
     }
 }
@@ -56,30 +64,29 @@ pub struct PartitionTransducer<T> {
 
 impl<T> Transducer<T, Vec<T>> for PartitionTransducer<T> {
     #[inline]
-    fn accept(&mut self, value: T) -> Option<Vec<T>> {
-        self.holder.push(value);
-        if self.holder.len() == self.size {
-            let mut other_vec = Vec::with_capacity(self.size);
-            mem::swap(&mut self.holder, &mut other_vec);
-
-            Some(other_vec)
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    fn complete(self) -> Option<Vec<Vec<T>>> {
-        if self.all {
-            if self.holder.is_empty() {
-                None
-            } else {
-                let mut result = Vec::with_capacity(1);
-                result.push(self.holder);
-                Some(result)
+    fn accept(&mut self, value: Option<T>) -> TransductionResult<Vec<T>> {
+        match value {
+            None => {
+                if self.all {
+                    if self.holder.is_empty() {
+                        TransductionResult::End
+                    } else {
+                        let pending = mem::replace(&mut self.holder, Vec::with_capacity(0));
+                        TransductionResult::Some(pending)
+                    }
+                } else {
+                    TransductionResult::End
+                }
+            },
+            Some(value) => {
+                self.holder.push(value);
+                if self.holder.len() == self.size {
+                    let pending = mem::replace(&mut self.holder, Vec::with_capacity(self.size));
+                    TransductionResult::Some(pending)
+                } else {
+                    TransductionResult::None
+                }
             }
-        } else {
-            None
         }
     }
 }

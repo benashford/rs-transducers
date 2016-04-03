@@ -3,15 +3,17 @@ pub mod applications;
 
 use std::marker::PhantomData;
 
+pub enum TransductionResult<T> {
+    /// End, there is nothing more to come
+    End,
+    /// None, there is nothing now, but may be more
+    None,
+    /// Some, a value
+    Some(T)
+}
+
 pub trait Transducer<I, O> {
-    fn accept(&mut self, value: I) -> Option<O>;
-
-    #[inline]
-    fn complete(self) -> Option<Vec<O>>
-        where Self: Sized {
-
-        None
-    }
+    fn accept(&mut self, value: Option<I>) -> TransductionResult<O>;
 }
 
 pub struct ComposedTransducer<AT, BT, B> {
@@ -24,31 +26,11 @@ impl<A, AT, B, BT, C> Transducer<A, C> for ComposedTransducer<AT, BT, B>
     where AT: Transducer<A, B>,
           BT: Transducer<B, C> {
     #[inline]
-    fn accept(&mut self, value: A) -> Option<C> {
+    fn accept(&mut self, value: Option<A>) -> TransductionResult<C> {
         match self.a.accept(value) {
-            None => None,
-            Some(interim) => self.b.accept(interim)
-        }
-    }
-
-    #[inline]
-    fn complete(mut self) -> Option<Vec<C>> {
-        match self.a.complete() {
-            None => self.b.complete(),
-            Some(mut interim) => {
-                let mut finish = Vec::with_capacity(interim.len() + 1);
-                for v in interim.drain(..) {
-                    match self.b.accept(v) {
-                        None => (),
-                        Some(v2) => finish.push(v2)
-                    }
-                }
-                match self.b.complete() {
-                    None => (),
-                    Some(mut vs) => { finish.append(&mut vs); }
-                }
-                Some(finish)
-            }
+            TransductionResult::End => self.b.accept(None),
+            TransductionResult::None => TransductionResult::None,
+            TransductionResult::Some(interim) => self.b.accept(Some(interim))
         }
     }
 }
