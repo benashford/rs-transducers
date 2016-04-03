@@ -85,4 +85,18 @@ mod test {
         let expected_result:Vec<Vec<usize>> = vec![vec![1, 2], vec![3, 4], vec![5, 6]];
         assert_eq!(expected_result, result);
     }
+
+    #[test]
+    fn test_take() {
+        let source = vec![1, 2, 3, 4, 5, 6, 7];
+        let transducer = transducers::take(5);
+        let result = source.trans_drain(transducer);
+        assert_eq!(vec![1, 2, 3, 4, 5], result);
+
+        let source2 = vec![1, 2, 3, 4, 5, 6, 7];
+        let transducer2 = super::compose(transducers::take(2),
+                                         transducers::filter(|x| x % 2 == 0));
+        let result = source2.trans_drain(transducer2);
+        assert_eq!(vec![2, 4], result);
+    }
 }

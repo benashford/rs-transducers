@@ -106,3 +106,32 @@ pub fn partition_all<T>(num: usize) -> PartitionTransducer<T> {
         all: true
     }
 }
+
+pub struct TakeTransducer {
+    size: usize,
+    taken: usize
+}
+
+impl<T> Transducer<T, T> for TakeTransducer {
+    #[inline]
+    fn accept(&mut self, value: Option<T>) -> TransductionResult<T> {
+        if self.taken == self.size {
+            TransductionResult::End
+        } else {
+            match value {
+                None => TransductionResult::End,
+                Some(value) => {
+                    self.taken += 1;
+                    TransductionResult::Some(value)
+                }
+            }
+        }
+    }
+}
+
+pub fn take(num: usize) -> TakeTransducer {
+    TakeTransducer {
+        size: num,
+        taken: 0
+    }
+}
