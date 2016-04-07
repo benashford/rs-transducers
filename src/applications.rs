@@ -133,3 +133,64 @@ pub mod iter {
         }
     }
 }
+
+pub mod channels {
+    use std::marker::PhantomData;
+    use std::sync::mpsc::{Receiver, Sender, SendError, channel};
+
+    use ::{Transducer, TransductionResult};
+
+    pub struct TransducingSender<F, TR, T>
+        where TR: Transducer<F, T> {
+
+        sender: Sender<T>,
+        from: PhantomData<F>,
+        transducer: TR
+    }
+
+    impl<F, TR, T> TransducingSender<F, TR, T>
+        where TR: Transducer<F, T> {
+
+        pub fn send(&mut self, f: F) -> Result<(), SendError<T>> {
+            match self.transducer.accept(Some(f)) {
+                TransductionResult::End => Ok(()),
+                TransductionResult::None => Ok(()),
+                TransductionResult::Some(out) => {
+                    self.sender.send(out)
+                }
+            }
+        }
+
+        pub fn close(&mut self) -> Result<(), SendError<T>> {
+            loop {
+                match self.transducer.accept(None) {
+                    TransductionResult::End => return Ok(()),
+                    TransductionResult::None => (),
+                    TransductionResult::Some(out) => {
+                        try!(self.sender.send(out));
+                    }
+                }
+            }
+        }
+    }
+
+    impl<F, TR, T> Drop for TransducingSender<F, TR, T>
+        where TR: Transducer<F, T> {
+
+        fn drop(&mut self) {
+            self.close().expect("Channel to close successfully");
+        }
+    }
+
+    pub fn transducing_channel<F, TR, T>(transducer: TR) -> (TransducingSender<F, TR, T>, Receiver<T>)
+        where TR: Transducer<F, T> {
+
+        let (tx, rx) = channel();
+        let sender = TransducingSender {
+            sender: tx,
+            from: PhantomData,
+            transducer: transducer
+        };
+        (sender, rx)
+    }
+}

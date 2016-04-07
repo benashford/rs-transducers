@@ -48,8 +48,11 @@ pub fn compose<A, AT, B, BT, C>(b: BT,
 
 #[cfg(test)]
 mod test {
+    use std::thread;
+
     use super::transducers;
     use super::applications::vec::{Drain, Ref};
+    use super::applications::channels::transducing_channel;
 
     #[test]
     fn test_vec_ref() {
@@ -98,5 +101,18 @@ mod test {
                                          transducers::filter(|x| x % 2 == 0));
         let result = source2.trans_drain(transducer2);
         assert_eq!(vec![2, 4], result);
+    }
+
+    #[test]
+    fn test_channels() {
+        let transducer = super::compose(transducers::partition_all(6),
+                                        transducers::filter(|x| x % 2 == 0));
+        let (mut tx, rx) = transducing_channel(transducer);
+        thread::spawn(move|| {
+            for i in 0..10 {
+                tx.send(i).unwrap();
+            }
+        });
+        assert_eq!(vec![0, 2, 4, 6, 8], rx.recv().unwrap());
     }
 }
