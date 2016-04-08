@@ -4,7 +4,25 @@
 
 An attempt at implementing Clojure style transducers in Rust.
 
-(detail to follow)
+## What is a transducer?
+
+When first introduced into Clojure, the concept of transducers caused a [lot of confusion](https://news.ycombinator.com/item?id=8143905).  The best overview is part of the [Clojure reference](http://clojure.org/reference/transducers).
+
+Essentially a transducer separates the application of functions on data from the structure of the data.  For example the higher-order functions like `map` can be expressed in such a way that could be applied to a vector, but also an iterator, but also a channel containing data passed between threads.
+
+This package contains a somewhat simplified implementation of Clojure's transducer implementation.
+
+## Transducers
+
+### Provided transducers
+
+### Applying transducers
+
+## Applications
+
+### Provided applications
+
+### Implementing applications
 
 ## License
 
