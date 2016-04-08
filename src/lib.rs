@@ -12,6 +12,7 @@ pub mod applications;
 
 use std::marker::PhantomData;
 
+/// The result of a transduction step
 pub enum TransductionResult<T> {
     /// End, there is nothing more to come
     End,
@@ -22,6 +23,7 @@ pub enum TransductionResult<T> {
 }
 
 pub trait Transducer<I, O> {
+    /// A transduction step
     fn accept(&mut self, value: Option<I>) -> TransductionResult<O>;
 }
 

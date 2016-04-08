@@ -10,9 +10,40 @@ When first introduced into Clojure, the concept of transducers caused a [lot of 
 
 Essentially a transducer separates the application of functions on data from the structure of the data.  For example the higher-order functions like `map` can be expressed in such a way that could be applied to a vector, but also an iterator, but also a channel containing data passed between threads.
 
-This package contains a somewhat simplified implementation of Clojure's transducer implementation.
+This package contains a somewhat simplified implementation of Clojure's transducer implementation intended to be idiomatic Rust while providing the same functionality.
+
+This library contains two parts:
+
+1. A collection of frequently occurring transducers.
+2. Implementation of applications of those transducers.
+
+In both cases these collections can be extended.  Custom transducers can be defined, and transducers can be applied to any custom data structure or stream.
+
+WARNING: as a result of the simplification, there is potentially some confused terminology.  At this early stage of development, I'm happy to correct these even if it involves renaming significant parts of the library.
 
 ## Transducers
+
+An example of a transducer to filter odd numbers:
+
+```rust
+extern crate rs_transducers;
+
+use rs_transducers::transducers;
+use rs_transducers::applications::vec::Drain;
+
+let source = vec![1, 2, 3, 4, 5];
+let transducer = transducers::filter(|x| x % 2 == 0);
+println!(source.transduce_drain(transducer));
+```
+
+This will print: `[2, 4]`.
+
+Transducers can be composed, so complex map/filter/etc. operations can be expressed simply.
+
+```rust
+let transducer = rs_transducers::compose(transducers::drop(5),
+                                         transducers::filter(|x| x % 2 == 0));
+```
 
 ### Provided transducers
 

@@ -144,3 +144,31 @@ pub fn take(num: usize) -> TakeTransducer {
         taken: 0
     }
 }
+
+pub struct DropTransducer {
+    size: usize,
+    dropped: usize
+}
+
+impl<T> Transducer<T, T> for DropTransducer {
+    #[inline]
+    fn accept(&mut self, value: Option<T>) -> TransductionResult<T> {
+        match value {
+            None => TransductionResult::End,
+            Some(value) => {
+                if self.dropped == self.size {
+                    TransductionResult::Some(value)
+                } else {
+                    TransductionResult::None
+                }
+            }
+        }
+    }
+}
+
+pub fn drop(num: usize) -> DropTransducer {
+    DropTransducer {
+        size: num,
+        dropped: 0
+    }
+}
