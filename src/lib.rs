@@ -67,7 +67,7 @@ mod test {
     fn test_vec_ref() {
         let source = vec![1, 2, 3];
         let transducer = transducers::map(|x| x + 1);
-        let result = source.trans_ref(transducer);
+        let result = source.transduce_ref(transducer);
         assert_eq!(vec![2, 3, 4], result);
     }
 
@@ -75,7 +75,7 @@ mod test {
     fn test_vec_drain() {
         let source = vec![1, 2, 3, 4, 5];
         let transducer = transducers::filter(|x| x % 2 == 0);
-        let result = source.trans_drain(transducer);
+        let result = source.transduce_drain(transducer);
         assert_eq!(vec![2, 4], result);
     }
 
@@ -85,7 +85,7 @@ mod test {
         let add_five = transducers::map(|x| x + 5);
         let filter_even = transducers::filter(|x| x % 2 == 0);
         let combined = super::compose(filter_even, add_five);
-        let result = source.trans_ref(combined);
+        let result = source.transduce_ref(combined);
         assert_eq!(vec![6, 8, 10, 12, 14], result);
     }
 
@@ -93,7 +93,7 @@ mod test {
     fn test_partition() {
         let source = vec![1, 2, 3, 4, 5, 6];
         let transducer = transducers::partition(2);
-        let result = source.trans_drain(transducer);
+        let result = source.transduce_drain(transducer);
         let expected_result:Vec<Vec<usize>> = vec![vec![1, 2], vec![3, 4], vec![5, 6]];
         assert_eq!(expected_result, result);
     }
@@ -102,13 +102,13 @@ mod test {
     fn test_take() {
         let source = vec![1, 2, 3, 4, 5, 6, 7];
         let transducer = transducers::take(5);
-        let result = source.trans_drain(transducer);
+        let result = source.transduce_drain(transducer);
         assert_eq!(vec![1, 2, 3, 4, 5], result);
 
         let source2 = vec![1, 2, 3, 4, 5, 6, 7];
         let transducer2 = super::compose(transducers::take(2),
                                          transducers::filter(|x| x % 2 == 0));
-        let result = source2.trans_drain(transducer2);
+        let result = source2.transduce_drain(transducer2);
         assert_eq!(vec![2, 4], result);
     }
 
