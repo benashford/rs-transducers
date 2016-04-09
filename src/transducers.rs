@@ -7,6 +7,7 @@
  * option. This file may not be copied, modified, or distributed
  * except according to those terms.
  */
+use std::collections::VecDeque;
 use std::mem;
 
 use super::{Transducer, TransductionResult};
@@ -32,6 +33,43 @@ pub fn map<F, I, O>(f: F) -> MapTransducer<F>
 
     MapTransducer {
         f: f
+    }
+}
+
+pub struct MapcatTransducer<F, T> {
+    f: F,
+    q: VecDeque<T>
+}
+
+impl<I, O, OI, F> Transducer<I, O> for MapcatTransducer<F, O>
+    where OI: IntoIterator<Item=O>,
+          F: Fn(I) -> OI {
+
+    #[inline]
+    fn accept(&mut self, value: Option<I>) -> TransductionResult<O> {
+        match value {
+            None => (),
+            Some(value) => {
+                let tmp = (self.f)(value);
+                for v in tmp {
+                    self.q.push_back(v);
+                }
+            }
+        }
+        match self.q.pop_front() {
+            Some(value) => TransductionResult::Some(value),
+            None => TransductionResult::End
+        }
+    }
+}
+
+pub fn mapcat<F, I, O, OI>(f: F) -> MapcatTransducer<F, O>
+    where OI: IntoIterator<Item=O>,
+          F: Fn(I) -> OI {
+
+    MapcatTransducer {
+        f: f,
+        q: VecDeque::new()
     }
 }
 
@@ -171,5 +209,24 @@ pub fn drop(num: usize) -> DropTransducer {
     DropTransducer {
         size: num,
         dropped: 0
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::super::applications::vec::Drain;
+
+    #[test]
+    fn test_mapcat() {
+        let source = vec![1, 2, 3];
+        let transducer = super::mapcat(|x| {
+            let mut v = Vec::new();
+            for i in 0..x {
+                v.push(i)
+            }
+            v
+        });
+        let result = source.transduce_drain(transducer);
+        assert_eq!(vec![0, 0, 1, 0, 1, 2], result);
     }
 }

@@ -49,13 +49,15 @@ let transducer = rs_transducers::compose(transducers::drop(5),
 
 `map` - takes a function of type `Fn(I) -> O` and returns a `MapTransducer` that implements `Transducer<I, O>`.
 
+`mapcat` - takes a function of type `Fn(I) -> OI` where `OI` implementes `IntoIterator<Item=O>` and returns a `MapcatTransducer` that implements `Transducer<I, O>`.
+
 `filter` - takes a function of type `Fn(I) -> bool` and returns a `FilterTransducer` that implements a `Transducer<I, I>`.
 
 `partition` and `partition_all` - takes a `usize` determining the size of each partition and returns a `PartitionTransducer` that implements `Transducer<I, Vec<I>>`.  The difference between the two is that `partition_all` will return the final partition incomplete, where `partition` will not.
 
 `take` and `drop` - takes a `usize` and return a transducer that implements `Transducer<I, I>` that takes or drops the appropriate number of elements.
 
-TODO - other transducers, at a minimum implement all those that Clojure does.  Specifically TODO are: `mapcat`, `remove`, `take-while`, `drop-while`, `take-nth`, `replace`, `partition-by`, `keep`, `keep-indexed`, `map-indexed`, `interpose`, `dedupe`, `random-sample`.
+TODO - other transducers, at a minimum implement all those that Clojure does.  Specifically TODO are: `remove`, `take-while`, `drop-while`, `take-nth`, `replace`, `partition-by`, `keep`, `keep-indexed`, `map-indexed`, `interpose`, `dedupe`, `random-sample`.
 
 ### Implementing transducers
 
