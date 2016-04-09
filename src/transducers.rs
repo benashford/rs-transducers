@@ -159,6 +159,7 @@ impl<T> Transducer<T, T> for DropTransducer {
                 if self.dropped == self.size {
                     TransductionResult::Some(value)
                 } else {
+                    self.dropped += 1;
                     TransductionResult::None
                 }
             }
