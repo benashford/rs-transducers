@@ -91,7 +91,33 @@ The trait `TransduceIter` adds a `transduce` to iterators which returns a new it
 
 Unlike operations solely defined on iterators, transducers can be applied to any sequence of data, including streams of data through channels between threads.
 
+One compromise is necessary since Rust's channels are concrete `Sender` and `Receiver` types, not implementing any traits, we cannot implement one of these channels (not without creating two pairs of channels, but that would need an additional thread to pipe messages between them).  Instead we wrap the `Sender` type with a new `TransducingSender`. 
+
+For example (from the tests):
+
+```rust
+let transducer = super::compose(transducers::partition_all(6),
+                                transducers::filter(|x| x % 2 == 0));
+let (mut tx, rx) = transducing_channel(transducer);
+thread::spawn(move|| {
+    for i in 0..10 {
+        tx.send(i).unwrap();
+    }
+});
+assert_eq!(vec![0, 2, 4, 6, 8], rx.recv().unwrap());
+```
+
+In this case the `Drop` trait is implemented to flush the transducer when the sending channel goes out of scope.  This is why a vector of length five is returned, even though `partition_all` was called with `6`.
+
 ### Implementing applications
+
+Any custom data-structure/channel/sequence/etc. can apply a transducer.  But to do so correctly, the following flow should be followed:
+
+* For each element call `accept` on the transducer, with `Some(value)`.
+* If the response is `TransductionResult::Some(value)` then `value` can be applied to the outcome. (NOTE: this is one of the simplifications compared to Clojure's transducers, there's no "reduction function", that is the responsibility of the code applying the transducer.)
+* If the response is `TransductionResult::None` then assume there is no value, and continue with the next element.  (For example, a `filter` removing elements based on the predicate function.)
+* If the response is `TransductionResult::End` then we have reached the end, and `accept` should not be called again.
+* At the end of all available elements, call `accept` with `None`, and handle the result the same as above.  Keep calling `accept` with `None` until it returns `TransductionsResult::End`.
 
 ## License
 
