@@ -73,9 +73,23 @@ Custom transducers can be implemented easily by implementing the `Transducer<I, 
 
 ## Applications
 
-
+Transducers need to be applied to a source of data to have an effect.  The initial example used the `Drain` trait to add `transduce_drain` to vectors; as the name suggests, this drains the original vector, applies the transducer and returns a new vector.
 
 ### Provided applications
+
+Implemented so far are transducer applications for:
+
+#### `Vec<T>`
+
+This comes in two forms `Drain` that adds a `transduce_drain` to vectors, this consumes the original vector; and the `Ref` trait that adds `transduce_ref` to vectors, this leaves the original vector unchanged and returns a new one based on feeding references to the source data through the transducer.
+
+#### `Iterator`
+
+The trait `TransduceIter` adds a `transduce` to iterators which returns a new iterator.
+
+#### Channels
+
+Unlike operations solely defined on iterators, transducers can be applied to any sequence of data, including streams of data through channels between threads.
 
 ### Implementing applications
 
