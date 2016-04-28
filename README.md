@@ -10,8 +10,6 @@ When first introduced into Clojure, the concept of transducers caused a [lot of 
 
 Essentially a transducer separates the application of functions on data from the structure of the data.  For example the higher-order functions like `map` can be expressed in such a way that could be applied to a vector, but also an iterator, but also a channel containing data passed between threads.
 
-This package contains a somewhat simplified implementation of Clojure's transducer implementation intended to be idiomatic Rust while providing the same functionality.
-
 This library contains two parts:
 
 1. A collection of frequently occurring transducers.
@@ -47,6 +45,8 @@ let transducer = rs_transducers::compose(transducers::drop(5),
 
 ### Provided transducers
 
+WARNING: not all these are currently enabled
+
 `map` - takes a function of type `Fn(I) -> O` and returns a `MapTransducer` that implements `Transducer<I, O>`.
 
 `mapcat` - takes a function of type `Fn(I) -> OI` where `OI` implementes `IntoIterator<Item=O>` and returns a `MapcatTransducer` that implements `Transducer<I, O>`.
@@ -61,17 +61,17 @@ TODO - other transducers, at a minimum implement all those that Clojure does.  S
 
 ### Implementing transducers
 
-Custom transducers can be implemented easily by implementing the `Transducer<I, O>` trait.  Implementations must provide an `fn accept(&mut self, value: Option<I>) -> TransductionResult<O>`.
+The initial version of this library attempted to simpify what a transducer was by trying to factor out the need for a "reducing function" (please see the Clojure documentation for definition of these terms).  By not having such a function then we didn't really have a transducer, just something that could be used for similar ends.  But it soon became apparent that both reducing functions and transducers will be needed; the reason for this is it is the only way certain transducers (e.g. `mapcat`) can be applied to certain things (e.g. channels).
 
-`accept` is called by the code applying the transducer to data, and is called for each element: `transducer.accept(Some(value))`.  When there is no more data, it will continue to call `transducer.accept(None)` until the transducer signals it is finished, this is because some transducers (like `partition_all` have state which is flushed at the end).
+Implementing a transducer, therefore requires implementing two traits `Transducer` for the transducer itself and `Reducing` for the reducing function returned by the transducer when applied to the previous reducing function.
 
-`accept` returns a `TransductionResult<O>` which is an enum with three options:
+#### `Transducer`
 
-1. `End` to indicate that everything is finished and no more data should be passed through the transducer.  However, under certain circumstances, `accept` might continue to be called, so the transducer should continue to return `End`.  This option is used by transducers such as `take` to stop the process ahead of time.  `End` should also be used to acknowledge a call to `accept` with `None`.
+TBC
 
-2. `None` to indicate that this call did not produce a value, e.g. a call to a `filter` transducer that is filtering something out.  Further calls to `accept` should be made until the end of the process.
+#### `Reducing`
 
-3. `Some(O)` the result of a call.
+TBC
 
 ## Applications
 
@@ -80,6 +80,8 @@ Transducers need to be applied to a source of data to have an effect.  The initi
 ### Provided applications
 
 Implemented so far are transducer applications for:
+
+WARNING: not all of these are currently enabled.
 
 #### `Vec<T>`
 
@@ -113,13 +115,14 @@ In this case the `Drop` trait is implemented to flush the transducer when the se
 
 ### Implementing applications
 
-Any custom data-structure/channel/sequence/etc. can apply a transducer.  But to do so correctly, the following flow should be followed:
+Any custom data-structure/channel/sequence/etc. can apply a transducer.
 
-* For each element call `accept` on the transducer, with `Some(value)`.
-* If the response is `TransductionResult::Some(value)` then `value` can be applied to the outcome. (NOTE: this is one of the simplifications compared to Clojure's transducers, there's no "reduction function", that is the responsibility of the code applying the transducer.)
-* If the response is `TransductionResult::None` then assume there is no value, and continue with the next element.  (For example, a `filter` removing elements based on the predicate function.)
-* If the response is `TransductionResult::End` then we have reached the end, and `accept` should not be called again.
-* At the end of all available elements, call `accept` with `None`, and handle the result the same as above.  Keep calling `accept` with `None` until it returns `TransductionsResult::End`.
+In order to do this an implementation of `Reducing` needs to be provided, to build the required data-structure.  Then:
+
+1. By passing this to the `new` function of a transducer a new reducing function is returned.
+2. Call `init` on the reducing function.
+3. For each piece of data call `step`.
+4. Finally `complete` returns the final data.
 
 ## License
 
