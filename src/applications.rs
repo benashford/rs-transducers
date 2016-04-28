@@ -25,6 +25,7 @@ pub mod vec {
     impl<'a, O> Reducing<O, Vec<O>, ()> for RefReducer<O> {
         type Item = O;
 
+        #[inline]
         fn step(&mut self, value: O) -> Result<(), ()> {
             self.0.push(value);
             Ok(())
@@ -171,6 +172,7 @@ pub mod channels {
     impl<O> Reducing<O, (), SendError<O>> for SenderReducer<O> {
         type Item = O;
 
+        #[inline]
         fn step(&mut self, value: O) -> Result<(), SendError<O>> {
             self.0.send(value)
         }

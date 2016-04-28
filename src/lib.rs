@@ -73,14 +73,19 @@ mod test {
         assert_eq!(vec![2, 3, 4], result);
     }
 
+    /// A trivial function to test function references
+    fn duplicator(i: &isize) -> Vec<isize> {
+        vec![*i, *i]
+    }
+
     #[test]
     fn test_compose() {
         let source = vec![1, 2, 3];
-        let ta = transducers::map(|x| x + 1);
+        let ta = transducers::mapcat(duplicator);
         let tb = transducers::map(|x| x * 2);
         let transducer = super::compose(ta, tb);
         let result = source.transduce_ref(transducer).unwrap();
-        assert_eq!(vec![4, 6, 8], result);
+        assert_eq!(vec![2, 2, 4, 4, 6, 6], result);
     }
 
     // #[test]

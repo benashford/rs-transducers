@@ -43,6 +43,7 @@ impl<R, F, I, O, OF, E> Reducing<I, OF, E> for MapReducer<R, F>
         self.rf.init();
     }
 
+    #[inline]
     fn step(&mut self, value: I) -> Result<(), E> {
         self.rf.step((self.t.f)(value))
     }
@@ -60,42 +61,58 @@ pub fn map<F, I, O>(f: F) -> MapTransducer<F>
     }
 }
 
-// pub struct MapcatTransducer<F, T> {
-//     f: F,
-//     q: VecDeque<T>
-// }
+pub struct MapcatTransducer<F> {
+    f: F
+}
 
-// impl<I, O, OI, F> Transducer<I, O> for MapcatTransducer<F, O>
-//     where OI: IntoIterator<Item=O>,
-//           F: Fn(I) -> OI {
+pub struct MapcatReducer<R, F> {
+    rf: R,
+    t: MapcatTransducer<F>
+}
 
-//     #[inline]
-//     fn accept(&mut self, value: Option<I>) -> TransductionResult<O> {
-//         match value {
-//             None => (),
-//             Some(value) => {
-//                 let tmp = (self.f)(value);
-//                 for v in tmp {
-//                     self.q.push_back(v);
-//                 }
-//             }
-//         }
-//         match self.q.pop_front() {
-//             Some(value) => TransductionResult::Some(value),
-//             None => TransductionResult::End
-//         }
-//     }
-// }
+impl<F, RI> Transducer<RI> for MapcatTransducer<F> {
+    type RO = MapcatReducer<RI, F>;
 
-// pub fn mapcat<F, I, O, OI>(f: F) -> MapcatTransducer<F, O>
-//     where OI: IntoIterator<Item=O>,
-//           F: Fn(I) -> OI {
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        MapcatReducer {
+            rf: reducing_fn,
+            t: self
+        }
+    }
+}
 
-//     MapcatTransducer {
-//         f: f,
-//         q: VecDeque::new()
-//     }
-// }
+impl<R, F, I, O, IO, OF, E> Reducing<I, OF, E> for MapcatReducer<R, F>
+    where IO: IntoIterator<Item=O>,
+          F: Fn(I) -> IO,
+          R: Reducing<O, OF, E> {
+
+    type Item = O;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<(), E> {
+        for o in (self.t.f)(value) {
+            try!(self.rf.step(o));
+        }
+        Ok(())
+    }
+
+    fn complete(self) -> OF {
+        self.rf.complete()
+    }
+}
+
+pub fn mapcat<F, I, O, IO>(f: F) -> MapcatTransducer<F>
+    where IO: IntoIterator<Item=O>,
+          F: Fn(I) -> IO {
+
+    MapcatTransducer {
+        f: f
+    }
+}
 
 // pub struct FilterTransducer<F> {
 //     f: F
