@@ -71,7 +71,7 @@ mod test {
 
     use super::transducers;
     use super::applications::vec::Ref;
-//    use super::applications::channels::transducing_channel;
+    use super::applications::channels::transducing_channel;
 
     #[test]
     fn test_vec_ref() {
@@ -122,16 +122,18 @@ mod test {
     //     assert_eq!(vec![2, 4], result);
     // }
 
-    // #[test]
-    // fn test_channels() {
-    //     let transducer = super::compose(transducers::partition_all(6),
-    //                                     transducers::filter(|x| x % 2 == 0));
-    //     let (mut tx, rx) = transducing_channel(transducer);
-    //     thread::spawn(move|| {
-    //         for i in 0..10 {
-    //             tx.send(i).unwrap();
-    //         }
-    //     });
-    //     assert_eq!(vec![0, 2, 4, 6, 8], rx.recv().unwrap());
-    // }
+    #[test]
+    fn test_channels() {
+        let transducer = transducers::map(|x| x + 1);
+        let (mut tx, rx) = transducing_channel(transducer);
+        thread::spawn(move|| {
+            for i in 0..3 {
+                tx.send(i).unwrap();
+            }
+            tx.close().unwrap();
+        });
+        assert_eq!(1, rx.recv().unwrap());
+        assert_eq!(2, rx.recv().unwrap());
+        assert_eq!(3, rx.recv().unwrap());
+    }
 }
