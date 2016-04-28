@@ -12,16 +12,23 @@ pub mod applications;
 
 use std::marker::PhantomData;
 
-pub trait Reducing<I, O> {
+/// Defines a reducing function from I to O with step errors of E
+pub trait Reducing<I, O, E> {
+    /// The type of each value after the reducing function
+    type Item;
+
     /// Transducers must call the underlying `init`
     fn init(&mut self) {}
 
-    fn step(&mut self, value: I);
+    /// Each step, may fail
+    fn step(&mut self, value: I) -> Result<(), E>;
 
     /// Transducers must call the underlying `complete`
     fn complete(self) -> O;
 }
 
+/// Defines a transducer that transforms a reducing function RI into
+/// a reducing function RO
 pub trait Transducer<RI> {
     type RO;
     fn new(self, reducing_fn: RI) -> Self::RO;
@@ -70,7 +77,7 @@ mod test {
     fn test_vec_ref() {
         let source = vec![1, 2, 3];
         let transducer = transducers::map(|x| x + 1);
-        let result = source.transduce_ref(transducer);
+        let result = source.transduce_ref(transducer).unwrap();
         assert_eq!(vec![2, 3, 4], result);
     }
 

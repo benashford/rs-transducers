@@ -14,17 +14,20 @@ pub mod vec {
     pub trait Ref {
         type Input;
 
-        fn transduce_ref<'a, T, O, RO>(&'a self, transducer: T) -> Vec<O>
-            where RO: Reducing<&'a Self::Input, Vec<O>>,
+        fn transduce_ref<'a, T, O, RO, E>(&'a self, transducer: T) -> Result<Vec<O>, E>
+            where RO: Reducing<&'a Self::Input, Vec<O>, E>,
                   T: Transducer<RefReducer<O>, RO=RO>;
     }
 
 
     struct RefReducer<O>(Vec<O>);
 
-    impl<'a, O> Reducing<O, Vec<O>> for RefReducer<O> {
-        fn step(&mut self, value: O) {
+    impl<'a, O> Reducing<O, Vec<O>, ()> for RefReducer<O> {
+        type Item = O;
+
+        fn step(&mut self, value: O) -> Result<(), ()> {
             self.0.push(value);
+            Ok(())
         }
 
         fn complete(self) -> Vec<O> {
@@ -35,16 +38,16 @@ pub mod vec {
     impl<X> Ref for Vec<X> {
         type Input = X;
 
-        fn transduce_ref<'a, T, O, RO>(&'a self, mut transducer: T) -> Vec<O>
-            where RO: Reducing<&'a Self::Input, Vec<O>>,
+        fn transduce_ref<'a, T, O, RO, E>(&'a self, mut transducer: T) -> Result<Vec<O>, E>
+            where RO: Reducing<&'a Self::Input, Vec<O>, E>,
                   T: Transducer<RefReducer<O>, RO=RO> {
             let rr = RefReducer(Vec::with_capacity(self.len()));
             let mut reducing = transducer.new(rr);
             reducing.init();
             for val in self.iter() {
-                reducing.step(val);
+                try!(reducing.step(val));
             }
-            reducing.complete()
+            Ok(reducing.complete())
         }
     }
 
@@ -150,63 +153,54 @@ pub mod vec {
 //     }
 // }
 
-// pub mod channels {
-//     use std::marker::PhantomData;
-//     use std::sync::mpsc::{Receiver, Sender, SendError, channel};
+pub mod channels {
+    use std::marker::PhantomData;
+    use std::sync::mpsc::{Receiver, Sender, SendError, channel};
 
-//     use ::{Transducer, TransductionResult};
+    use ::{Transducer, Reducing};
 
-//     pub struct TransducingSender<F, TR, T>
-//         where TR: Transducer<F, T> {
+    pub struct TransducingSender<O, SR>
+        where SR: Reducing<O, (), SendError<O>> {
 
-//         sender: Sender<T>,
-//         from: PhantomData<F>,
-//         transducer: TR
-//     }
+        rf: SR,
+        o_type: PhantomData<O>
+    }
 
-//     impl<F, TR, T> TransducingSender<F, TR, T>
-//         where TR: Transducer<F, T> {
+    pub struct SenderReducer<T>(Sender<T>);
 
-//         pub fn send(&mut self, f: F) -> Result<(), SendError<T>> {
-//             match self.transducer.accept(Some(f)) {
-//                 TransductionResult::End => Ok(()),
-//                 TransductionResult::None => Ok(()),
-//                 TransductionResult::Some(out) => {
-//                     self.sender.send(out)
-//                 }
-//             }
-//         }
+    impl<O> Reducing<O, (), SendError<O>> for SenderReducer<O> {
+        type Item = O;
 
-//         pub fn close(&mut self) -> Result<(), SendError<T>> {
-//             loop {
-//                 match self.transducer.accept(None) {
-//                     TransductionResult::End => return Ok(()),
-//                     TransductionResult::None => (),
-//                     TransductionResult::Some(out) => {
-//                         try!(self.sender.send(out));
-//                     }
-//                 }
-//             }
-//         }
-//     }
+        fn step(&mut self, value: O) -> Result<(), SendError<O>> {
+            self.0.send(value)
+        }
 
-//     impl<F, TR, T> Drop for TransducingSender<F, TR, T>
-//         where TR: Transducer<F, T> {
+        fn complete(self) -> () {
+            ()
+        }
+    }
 
-//         fn drop(&mut self) {
-//             self.close().expect("Channel to close successfully");
-//         }
-//     }
+    impl<O, SR> TransducingSender<O, SR>
+        where SR: Reducing<O, (), SendError<O>> {
 
-//     pub fn transducing_channel<F, TR, T>(transducer: TR) -> (TransducingSender<F, TR, T>, Receiver<T>)
-//         where TR: Transducer<F, T> {
+        pub fn send(&mut self, f: O) -> Result<(), SendError<O>> {
+            self.rf.step(f)
+        }
 
-//         let (tx, rx) = channel();
-//         let sender = TransducingSender {
-//             sender: tx,
-//             from: PhantomData,
-//             transducer: transducer
-//         };
-//         (sender, rx)
-//     }
-// }
+        pub fn close(self) -> Result<(), SendError<O>> {
+            Ok(self.rf.complete())
+        }
+    }
+
+    pub fn transducing_channel<I, O, T, RO>(transducer: T) -> (TransducingSender<I, RO>,
+                                                               Receiver<O>)
+        where RO: Reducing<I, (), SendError<I>, Item=O>,
+              T: Transducer<SenderReducer<O>, RO=RO> {
+        let (tx, rx) = channel();
+        let sender = TransducingSender {
+            rf: transducer.new(SenderReducer(tx)),
+            o_type: PhantomData
+        };
+        (sender, rx)
+    }
+}

@@ -33,15 +33,18 @@ impl<F, RI> Transducer<RI> for MapTransducer<F> {
     }
 }
 
-impl<R, F, I, O, OF> Reducing<I, OF> for MapReducer<R, F>
+impl<R, F, I, O, OF, E> Reducing<I, OF, E> for MapReducer<R, F>
     where F: Fn(I) -> O,
-          R: Reducing<O, OF> {
+          R: Reducing<O, OF, E> {
+
+    type Item = O;
+
     fn init(&mut self) {
         self.rf.init();
     }
 
-    fn step(&mut self, value: I) {
-        self.rf.step((self.t.f)(value));
+    fn step(&mut self, value: I) -> Result<(), E> {
+        self.rf.step((self.t.f)(value))
     }
 
     fn complete(self) -> OF {
