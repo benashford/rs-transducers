@@ -34,36 +34,28 @@ pub trait Transducer<RI> {
     fn new(self, reducing_fn: RI) -> Self::RO;
 }
 
-// TODO - composing will work very differently
-// pub struct ComposedTransducer<AT, BT, B> {
-//     a: AT,
-//     b: BT,
-//     phantom: PhantomData<B>
-// }
+/// Composed transducers
+pub struct ComposedTransducer<AT, BT> {
+    a: AT,
+    b: BT
+}
 
-// impl<A, AT, B, BT, C> Transducer<A, C> for ComposedTransducer<AT, BT, B>
-//     where AT: Transducer<A, B>,
-//           BT: Transducer<B, C> {
-//     #[inline]
-//     fn accept(&mut self, value: Option<A>) -> TransductionResult<C> {
-//         match self.a.accept(value) {
-//             TransductionResult::End => self.b.accept(None),
-//             TransductionResult::None => TransductionResult::None,
-//             TransductionResult::Some(interim) => self.b.accept(Some(interim))
-//         }
-//     }
-// }
+impl <RI, RT, RO, AT, BT> Transducer<RI> for ComposedTransducer<AT, BT>
+    where AT: Transducer<RI, RO=RT>,
+          BT: Transducer<RT, RO=RO> {
+    type RO = RO;
 
-// pub fn compose<A, AT, B, BT, C>(b: BT,
-//                                 a: AT) -> ComposedTransducer<AT, BT, B>
-//     where AT: Transducer<A, B>,
-//           BT: Transducer<B, C> {
-//     ComposedTransducer {
-//         a: a,
-//         b: b,
-//         phantom: PhantomData
-//     }
-// }
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        self.b.new(self.a.new(reducing_fn))
+    }
+}
+
+pub fn compose<AT, BT>(b: BT, a: AT) -> ComposedTransducer<AT, BT> {
+    ComposedTransducer {
+        a: a,
+        b: b
+    }
+}
 
 #[cfg(test)]
 mod test {
@@ -81,22 +73,22 @@ mod test {
         assert_eq!(vec![2, 3, 4], result);
     }
 
+    #[test]
+    fn test_compose() {
+        let source = vec![1, 2, 3];
+        let ta = transducers::map(|x| x + 1);
+        let tb = transducers::map(|x| x * 2);
+        let transducer = super::compose(ta, tb);
+        let result = source.transduce_ref(transducer).unwrap();
+        assert_eq!(vec![4, 6, 8], result);
+    }
+
     // #[test]
     // fn test_vec_drain() {
     //     let source = vec![1, 2, 3, 4, 5];
     //     let transducer = transducers::filter(|x| x % 2 == 0);
     //     let result = source.transduce_drain(transducer);
     //     assert_eq!(vec![2, 4], result);
-    // }
-
-    // #[test]
-    // fn test_compose() {
-    //     let source = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    //     let add_five = transducers::map(|x| x + 5);
-    //     let filter_even = transducers::filter(|x| x % 2 == 0);
-    //     let combined = super::compose(filter_even, add_five);
-    //     let result = source.transduce_ref(combined);
-    //     assert_eq!(vec![6, 8, 10, 12, 14], result);
     // }
 
     // #[test]
