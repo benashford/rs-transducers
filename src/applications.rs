@@ -76,75 +76,99 @@ pub mod vec {
     }
 }
 
-// pub mod iter {
-//     use std::marker::PhantomData;
+pub mod iter {
+    use std::cell::RefCell;
+    use std::collections::VecDeque;
+    use std::marker::PhantomData;
+    use std::rc::Rc;
 
-//     use ::{Transducer, TransductionResult};
+    use ::{Transducer, Reducing};
 
-//     pub trait TransduceIter {
-//         type UnderlyingIterator;
+    pub trait TransduceIter {
+        type UnderlyingIterator;
+        type Item;
 
-//         fn transduce<T, F, O>(self, transducer: T) -> TransduceIterator<Self::UnderlyingIterator, T, F, O>
-//             where T: Transducer<F, O>;
-//     }
+        fn transduce<T, O, RO, E>(self, transducer: T) -> TransduceIterator<Self::UnderlyingIterator, O, RO>
+            where RO: Reducing<Self::Item, (), E>,
+                  T: Transducer<IterReducer<O>, RO=RO>;
+    }
 
-//     impl<I> TransduceIter for I
-//         where I: Iterator {
+    impl<I, T> TransduceIter for I
+        where I: Iterator<Item=T> {
 
-//         type UnderlyingIterator = I;
+        type UnderlyingIterator = I;
+        type Item = T;
 
-//         fn transduce<T, F, O>(self, transducer: T) -> TransduceIterator<Self::UnderlyingIterator, T, F, O>
-//             where T: Transducer<F, O> {
+        fn transduce<TR, O, RO, E>(self, transducer: TR) -> TransduceIterator<Self::UnderlyingIterator, O, RO>
+            where RO: Reducing<Self::Item, (), E>,
+                  TR: Transducer<IterReducer<O>, RO=RO> {
+            let buffer = Rc::new(RefCell::new(VecDeque::new()));
 
-//             TransduceIterator {
-//                 underlying: self,
-//                 finished: false,
-//                 transducer: transducer,
-//                 from: PhantomData,
-//                 out: PhantomData
-//             }
-//         }
-//     }
+            TransduceIterator {
+                underlying: self,
+                buffer: buffer.clone(),
+                rf: transducer.new(IterReducer(buffer.clone())),
+                runoff: false
+            }
+        }
+    }
 
-//     pub struct TransduceIterator<I, T, F, O> {
-//         underlying: I,
-//         finished: bool,
-//         transducer: T,
-//         from: PhantomData<F>,
-//         out: PhantomData<O>
-//     }
+    pub struct IterReducer<T>(Rc<RefCell<VecDeque<T>>>);
 
-//     impl<I, T, F, O> TransduceIterator<I, T, F, O>
-//         where T: Transducer<F, O> {
-//     }
+    impl<T> Reducing<T, (), ()> for IterReducer<T> {
+        type Item = T;
 
-//     impl<I, T, F, O> Iterator for TransduceIterator<I, T, F, O>
-//         where I: Iterator<Item=F>,
-//               T: Transducer<F, O> {
+        #[inline]
+        fn step(&mut self, value: T) -> Result<(), ()> {
+            self.0.borrow_mut().push_back(value);
+            Ok(())
+        }
 
-//         type Item = O;
+        fn complete(self) -> () {
+            ()
+        }
+    }
 
-//         #[inline]
-//         fn next(&mut self) -> Option<Self::Item> {
-//             loop {
-//                 let next_val = if self.finished {
-//                     None
-//                 } else {
-//                     let interim = self.underlying.next();
-//                     if interim.is_none() {
-//                         self.finished = true
-//                     }
-//                     interim
-//                 };
-//                 match self.transducer.accept(next_val) {
-//                     TransductionResult::End => return None,
-//                     TransductionResult::None => (),
-//                     TransductionResult::Some(value) => return Some(value)
-//                 }
-//             }
-//         }
-//     }
-// }
+    pub struct TransduceIterator<I, O, RF> {
+        underlying: I,
+        buffer: Rc<RefCell<VecDeque<O>>>,
+        rf: RF,
+        runoff: bool
+    }
+
+    impl<I, IN, O, RF> Iterator for TransduceIterator<I, O, RF>
+        where I: Iterator<Item=IN>,
+              RF: Reducing<IN, (), ()> {
+
+        type Item = O;
+
+        #[inline]
+        fn next(&mut self) -> Option<Self::Item> {
+            loop {
+                if !self.runoff && self.buffer.borrow().is_empty() {
+                    match self.underlying.next() {
+                        None => {
+                            self.runoff = true;
+                            // TODO - re-enable subsequent line, will not work correctly
+                            // without it
+                            //self.rf.complete();
+                        },
+                        Some(value) => {
+                            self.rf.step(value).unwrap();
+                        }
+                    }
+                }
+                if self.runoff && self.buffer.borrow().is_empty() {
+                    return None
+                }
+                match self.buffer.borrow_mut().pop_front() {
+                    None => (),
+                    Some(value) => return Some(value)
+                }
+            }
+        }
+    }
+}
 
 pub mod channels {
     use std::marker::PhantomData;

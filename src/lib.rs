@@ -18,12 +18,16 @@ pub trait Reducing<I, O, E> {
     type Item;
 
     /// Transducers must call the underlying `init`
+    /// TODO: may not be required at all. Not currently used by any implementation
     fn init(&mut self) {}
 
     /// Each step, may fail
+    /// TODO: the return type to contain an indicator of early termination
     fn step(&mut self, value: I) -> Result<(), E>;
 
     /// Transducers must call the underlying `complete`
+    /// TODO: return value may not be required long-term, only currently
+    /// used by Vector based transducers
     fn complete(self) -> O;
 }
 
