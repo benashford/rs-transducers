@@ -48,7 +48,7 @@ impl<R, F, I, O, OF, E> Reducing<I, OF, E> for MapReducer<R, F>
         self.rf.step((self.t.f)(value))
     }
 
-    fn complete(self) -> OF {
+    fn complete(&mut self) -> Result<(), E> {
         self.rf.complete()
     }
 }
@@ -100,7 +100,7 @@ impl<R, F, I, O, IO, OF, E> Reducing<I, OF, E> for MapcatReducer<R, F>
         Ok(())
     }
 
-    fn complete(self) -> OF {
+    fn complete(&mut self) -> Result<(), E> {
         self.rf.complete()
     }
 }

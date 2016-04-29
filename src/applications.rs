@@ -9,6 +9,9 @@
  */
 
 pub mod vec {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+    
     use ::{Transducer, Reducing};
 
     pub trait Ref {
@@ -27,19 +30,19 @@ pub mod vec {
                   T: Transducer<VecReducer<O>, RO=RO>;
     }
 
-    pub struct VecReducer<O>(Vec<O>);
+    pub struct VecReducer<O>(Rc<RefCell<Vec<O>>>);
 
     impl<'a, O> Reducing<O, Vec<O>, ()> for VecReducer<O> {
         type Item = O;
 
         #[inline]
         fn step(&mut self, value: O) -> Result<(), ()> {
-            self.0.push(value);
+            self.0.borrow_mut().push(value);
             Ok(())
         }
 
-        fn complete(self) -> Vec<O> {
-            self.0
+        fn complete(&mut self) -> Result<(), ()> {
+            Ok(())
         }
     }
 
@@ -49,13 +52,20 @@ pub mod vec {
         fn transduce_ref<'a, T, O, RO, E>(&'a self, mut transducer: T) -> Result<Vec<O>, E>
             where RO: Reducing<&'a Self::Input, Vec<O>, E>,
                   T: Transducer<VecReducer<O>, RO=RO> {
-            let rr = VecReducer(Vec::with_capacity(self.len()));
-            let mut reducing = transducer.new(rr);
-            reducing.init();
-            for val in self.iter() {
-                try!(reducing.step(val));
+            let res = Rc::new(RefCell::new(Vec::with_capacity(self.len())));
+            {
+                let rr = VecReducer(res.clone());
+                let mut reducing = transducer.new(rr);
+                reducing.init();
+                for val in self.iter() {
+                    try!(reducing.step(val));
+                }
+                try!(reducing.complete())
             }
-            Ok(reducing.complete())
+            Ok(match Rc::try_unwrap(res) {
+                Ok(res) => res.into_inner(),
+                Err(_) => panic!("Other refs")
+            })
         }
     }
 
@@ -65,13 +75,20 @@ pub mod vec {
         fn transduce_into<T, O, RO, E>(self, transducer: T) -> Result<Vec<O>, E>
             where RO: Reducing<Self::Input, Vec<O>, E>,
                   T: Transducer<VecReducer<O>, RO=RO> {
-            let rr = VecReducer(Vec::with_capacity(self.len()));
-            let mut reducing = transducer.new(rr);
-            reducing.init();
-            for val in self.into_iter() {
-                try!(reducing.step(val))
+            let res = Rc::new(RefCell::new(Vec::with_capacity(self.len())));
+            {
+                let rr = VecReducer(res.clone());
+                let mut reducing = transducer.new(rr);
+                reducing.init();
+                for val in self.into_iter() {
+                    try!(reducing.step(val))
+                }
+                try!(reducing.complete())
             }
-            Ok(reducing.complete())
+            Ok(match Rc::try_unwrap(res) {
+                Ok(res) => res.into_inner(),
+                Err(_) => panic!("Other refs")
+            })
         }
     }
 }
@@ -124,8 +141,8 @@ pub mod iter {
             Ok(())
         }
 
-        fn complete(self) -> () {
-            ()
+        fn complete(&mut self) -> Result<(), ()> {
+            Ok(())
         }
     }
 
@@ -149,9 +166,7 @@ pub mod iter {
                     match self.underlying.next() {
                         None => {
                             self.runoff = true;
-                            // TODO - re-enable subsequent line, will not work correctly
-                            // without it
-                            //self.rf.complete();
+                            self.rf.complete();
                         },
                         Some(value) => {
                             self.rf.step(value).unwrap();
@@ -193,8 +208,8 @@ pub mod channels {
             self.0.send(value)
         }
 
-        fn complete(self) -> () {
-            ()
+        fn complete(&mut self) -> Result<(), SendError<O>> {
+            Ok(())
         }
     }
 
@@ -205,8 +220,8 @@ pub mod channels {
             self.rf.step(f)
         }
 
-        pub fn close(self) -> Result<(), SendError<O>> {
-            Ok(self.rf.complete())
+        pub fn close(&mut self) -> Result<(), SendError<O>> {
+            self.rf.complete()
         }
     }
 

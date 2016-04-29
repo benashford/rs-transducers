@@ -26,9 +26,7 @@ pub trait Reducing<I, O, E> {
     fn step(&mut self, value: I) -> Result<(), E>;
 
     /// Transducers must call the underlying `complete`
-    /// TODO: return value may not be required long-term, only currently
-    /// used by Vector based transducers
-    fn complete(self) -> O;
+    fn complete(&mut self) -> Result<(), E>;
 }
 
 /// Defines a transducer that transforms a reducing function RI into
