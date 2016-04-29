@@ -16,13 +16,13 @@ pub mod vec {
 
         fn transduce_ref<'a, T, O, RO, E>(&'a self, transducer: T) -> Result<Vec<O>, E>
             where RO: Reducing<&'a Self::Input, Vec<O>, E>,
-                  T: Transducer<RefReducer<O>, RO=RO>;
+                  T: Transducer<VecReducer<O>, RO=RO>;
     }
 
 
-    struct RefReducer<O>(Vec<O>);
+    pub struct VecReducer<O>(Vec<O>);
 
-    impl<'a, O> Reducing<O, Vec<O>, ()> for RefReducer<O> {
+    impl<'a, O> Reducing<O, Vec<O>, ()> for VecReducer<O> {
         type Item = O;
 
         #[inline]
@@ -41,8 +41,8 @@ pub mod vec {
 
         fn transduce_ref<'a, T, O, RO, E>(&'a self, mut transducer: T) -> Result<Vec<O>, E>
             where RO: Reducing<&'a Self::Input, Vec<O>, E>,
-                  T: Transducer<RefReducer<O>, RO=RO> {
-            let rr = RefReducer(Vec::with_capacity(self.len()));
+                  T: Transducer<VecReducer<O>, RO=RO> {
+            let rr = VecReducer(Vec::with_capacity(self.len()));
             let mut reducing = transducer.new(rr);
             reducing.init();
             for val in self.iter() {
