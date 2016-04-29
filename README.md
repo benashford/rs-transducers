@@ -27,11 +27,11 @@ An example of a transducer to filter odd numbers:
 extern crate rs_transducers;
 
 use rs_transducers::transducers;
-use rs_transducers::applications::vec::Drain;
+use rs_transducers::applications::vec::Into;
 
 let source = vec![1, 2, 3, 4, 5];
 let transducer = transducers::filter(|x| x % 2 == 0);
-println!(source.transduce_drain(transducer));
+println!(source.transduce_into(transducer));
 ```
 
 This will print: `[2, 4]`.
@@ -75,7 +75,7 @@ TBC
 
 ## Applications
 
-Transducers need to be applied to a source of data to have an effect.  The initial example used the `Drain` trait to add `transduce_drain` to vectors; as the name suggests, this drains the original vector, applies the transducer and returns a new vector.
+Transducers need to be applied to a source of data to have an effect.  The initial example used the `Into` trait to add `transduce_into` to vectors; as the name suggests, this is analogous to `into_iter()` in that it consumes the original data, applies the transducer and returns a new vector.
 
 ### Provided applications
 
@@ -85,7 +85,7 @@ WARNING: not all of these are currently enabled.
 
 #### `Vec<T>`
 
-This comes in two forms `Drain` that adds a `transduce_drain` to vectors, this consumes the original vector; and the `Ref` trait that adds `transduce_ref` to vectors, this leaves the original vector unchanged and returns a new one based on feeding references to the source data through the transducer.
+This comes in two forms `Into` that adds a `transduce_into` to vectors, this consumes the original vector; and the `Ref` trait that adds `transduce_ref` to vectors, this leaves the original vector unchanged and returns a new one based on feeding references to the source data through the transducer.
 
 #### `Iterator`
 
@@ -107,11 +107,10 @@ thread::spawn(move|| {
     for i in 0..10 {
         tx.send(i).unwrap();
     }
+    tx.close().unwrap();
 });
 assert_eq!(vec![0, 2, 4, 6, 8], rx.recv().unwrap());
 ```
-
-In this case the `Drop` trait is implemented to flush the transducer when the sending channel goes out of scope.  This is why a vector of length five is returned, even though `partition_all` was called with `6`.
 
 ### Implementing applications
 

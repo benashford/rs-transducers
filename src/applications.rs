@@ -19,6 +19,13 @@ pub mod vec {
                   T: Transducer<VecReducer<O>, RO=RO>;
     }
 
+    pub trait Into {
+        type Input;
+
+        fn transduce_into<T, O, RO, E>(self, transducer: T) -> Result<Vec<O>, E>
+            where RO: Reducing<Self::Input, Vec<O>, E>,
+                  T: Transducer<VecReducer<O>, RO=RO>;
+    }
 
     pub struct VecReducer<O>(Vec<O>);
 
@@ -52,36 +59,21 @@ pub mod vec {
         }
     }
 
-    // pub trait Drain {
-    //     type Input;
+    impl<X> Into for Vec<X> {
+        type Input = X;
 
-    //     fn transduce_drain<T, O>(mut self, transducer: T) -> Vec<O>
-    //         where T: Transducer<Self::Input, O>;
-    // }
-
-    // impl<X> Drain for Vec<X> {
-    //     type Input = X;
-
-    //     fn transduce_drain<T, O>(mut self, mut transducer: T) -> Vec<O>
-    //         where T: Transducer<Self::Input, O> {
-
-    //         let mut result = Vec::with_capacity(self.len());
-    //         for val in self.drain(..) {
-    //             match transducer.accept(Some(val)) {
-    //                 TransductionResult::End => { return result; },
-    //                 TransductionResult::None => (),
-    //                 TransductionResult::Some(r) => { result.push(r); }
-    //             }
-    //         }
-    //         loop {
-    //             match transducer.accept(None) {
-    //                 TransductionResult::End => { return result; },
-    //                 TransductionResult::None => (),
-    //                 TransductionResult::Some(r) => { result.push(r); }
-    //             }
-    //         }
-    //     }
-    // }
+        fn transduce_into<T, O, RO, E>(self, transducer: T) -> Result<Vec<O>, E>
+            where RO: Reducing<Self::Input, Vec<O>, E>,
+                  T: Transducer<VecReducer<O>, RO=RO> {
+            let rr = VecReducer(Vec::with_capacity(self.len()));
+            let mut reducing = transducer.new(rr);
+            reducing.init();
+            for val in self.into_iter() {
+                try!(reducing.step(val))
+            }
+            Ok(reducing.complete())
+        }
+    }
 }
 
 // pub mod iter {

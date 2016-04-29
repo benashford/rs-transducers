@@ -62,7 +62,7 @@ mod test {
     use std::thread;
 
     use super::transducers;
-    use super::applications::vec::Ref;
+    use super::applications::vec::{Into, Ref};
     use super::applications::channels::transducing_channel;
 
     #[test]
@@ -74,8 +74,8 @@ mod test {
     }
 
     /// A trivial function to test function references
-    fn duplicator(i: &isize) -> Vec<isize> {
-        vec![*i, *i]
+    fn duplicator(i: isize) -> Vec<isize> {
+        vec![i, i]
     }
 
     #[test]
@@ -84,17 +84,9 @@ mod test {
         let ta = transducers::mapcat(duplicator);
         let tb = transducers::map(|x| x * 2);
         let transducer = super::compose(ta, tb);
-        let result = source.transduce_ref(transducer).unwrap();
+        let result = source.transduce_into(transducer).unwrap();
         assert_eq!(vec![2, 2, 4, 4, 6, 6], result);
     }
-
-    // #[test]
-    // fn test_vec_drain() {
-    //     let source = vec![1, 2, 3, 4, 5];
-    //     let transducer = transducers::filter(|x| x % 2 == 0);
-    //     let result = source.transduce_drain(transducer);
-    //     assert_eq!(vec![2, 4], result);
-    // }
 
     // #[test]
     // fn test_partition() {
