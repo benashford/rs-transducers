@@ -65,6 +65,7 @@ mod test {
 
     use super::transducers;
     use super::applications::vec::{Into, Ref};
+    use super::applications::iter::TransduceIter;
     use super::applications::channels::transducing_channel;
 
     #[test]
@@ -88,6 +89,14 @@ mod test {
         let transducer = super::compose(ta, tb);
         let result = source.transduce_into(transducer).unwrap();
         assert_eq!(vec![2, 2, 4, 4, 6, 6], result);
+    }
+
+    #[test]
+    fn test_iterator() {
+        let source = vec![1, 2, 3];
+        let transducer = transducers::mapcat(duplicator);
+        let result:Vec<isize> = source.into_iter().transduce(transducer).collect();
+        assert_eq!(vec![1, 1, 2, 2, 3, 3], result);
     }
 
     // #[test]

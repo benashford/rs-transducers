@@ -11,7 +11,7 @@
 pub mod vec {
     use std::cell::RefCell;
     use std::rc::Rc;
-    
+
     use ::{Transducer, Reducing};
 
     pub trait Ref {
