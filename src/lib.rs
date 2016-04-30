@@ -12,6 +12,11 @@ pub mod applications;
 
 use std::marker::PhantomData;
 
+pub enum StepResult {
+    Continue,
+    Stop
+}
+
 /// Defines a reducing function from I to O with step errors of E
 pub trait Reducing<I, O, E> {
     /// The type of each value after the reducing function
@@ -23,7 +28,7 @@ pub trait Reducing<I, O, E> {
 
     /// Each step, may fail
     /// TODO: the return type to contain an indicator of early termination
-    fn step(&mut self, value: I) -> Result<(), E>;
+    fn step(&mut self, value: I) -> Result<StepResult, E>;
 
     /// Transducers must call the underlying `complete`
     fn complete(&mut self) -> Result<(), E>;

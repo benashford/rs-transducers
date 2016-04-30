@@ -12,7 +12,7 @@ pub mod vec {
     use std::cell::RefCell;
     use std::rc::Rc;
 
-    use ::{Transducer, Reducing};
+    use ::{Transducer, Reducing, StepResult};
 
     pub trait Ref {
         type Input;
@@ -36,9 +36,9 @@ pub mod vec {
         type Item = O;
 
         #[inline]
-        fn step(&mut self, value: O) -> Result<(), ()> {
+        fn step(&mut self, value: O) -> Result<StepResult, ()> {
             self.0.borrow_mut().push(value);
-            Ok(())
+            Ok(StepResult::Continue)
         }
 
         fn complete(&mut self) -> Result<(), ()> {
@@ -58,7 +58,11 @@ pub mod vec {
                 let mut reducing = transducer.new(rr);
                 reducing.init();
                 for val in self.iter() {
-                    try!(reducing.step(val));
+                    match reducing.step(val) {
+                        Ok(StepResult::Continue) => (),
+                        Ok(StepResult::Stop) => break,
+                        Err(e) => return Err(e)
+                    }
                 }
                 try!(reducing.complete())
             }
@@ -81,7 +85,11 @@ pub mod vec {
                 let mut reducing = transducer.new(rr);
                 reducing.init();
                 for val in self.into_iter() {
-                    try!(reducing.step(val))
+                    match reducing.step(val) {
+                        Ok(StepResult::Continue) => (),
+                        Ok(StepResult::Stop) => break,
+                        Err(e) => return Err(e)
+                    }
                 }
                 try!(reducing.complete())
             }
@@ -99,7 +107,7 @@ pub mod iter {
     use std::marker::PhantomData;
     use std::rc::Rc;
 
-    use ::{Transducer, Reducing};
+    use ::{Transducer, Reducing, StepResult};
 
     pub trait TransduceIter {
         type UnderlyingIterator;
@@ -136,9 +144,9 @@ pub mod iter {
         type Item = T;
 
         #[inline]
-        fn step(&mut self, value: T) -> Result<(), ()> {
+        fn step(&mut self, value: T) -> Result<StepResult, ()> {
             self.0.borrow_mut().push_back(value);
-            Ok(())
+            Ok(StepResult::Continue)
         }
 
         fn complete(&mut self) -> Result<(), ()> {
@@ -169,7 +177,14 @@ pub mod iter {
                             self.rf.complete();
                         },
                         Some(value) => {
-                            self.rf.step(value).unwrap();
+                            match self.rf.step(value) {
+                                Ok(StepResult::Continue) => (),
+                                Ok(StepResult::Stop) => {
+                                    self.runoff = true;
+                                    self.rf.complete();
+                                },
+                                Err(e) => unreachable!()
+                            }
                         }
                     }
                 }
@@ -189,7 +204,7 @@ pub mod channels {
     use std::marker::PhantomData;
     use std::sync::mpsc::{Receiver, Sender, SendError, channel};
 
-    use ::{Transducer, Reducing};
+    use ::{Transducer, Reducing, StepResult};
 
     pub struct TransducingSender<O, SR>
         where SR: Reducing<O, (), SendError<O>> {
@@ -204,8 +219,11 @@ pub mod channels {
         type Item = O;
 
         #[inline]
-        fn step(&mut self, value: O) -> Result<(), SendError<O>> {
-            self.0.send(value)
+        fn step(&mut self, value: O) -> Result<StepResult, SendError<O>> {
+            match self.0.send(value) {
+                Ok(_) => Ok(StepResult::Continue),
+                Err(e) => Err(e)
+            }
         }
 
         fn complete(&mut self) -> Result<(), SendError<O>> {
@@ -216,8 +234,12 @@ pub mod channels {
     impl<O, SR> TransducingSender<O, SR>
         where SR: Reducing<O, (), SendError<O>> {
 
-        pub fn send(&mut self, f: O) -> Result<(), SendError<O>> {
-            self.rf.step(f)
+        pub fn send(&mut self, f: O) -> Result<bool, SendError<O>> {
+            match self.rf.step(f) {
+                Ok(StepResult::Continue) => Ok(true),
+                Ok(StepResult::Stop) => Ok(false),
+                Err(e) => Err(e)
+            }
         }
 
         pub fn close(&mut self) -> Result<(), SendError<O>> {

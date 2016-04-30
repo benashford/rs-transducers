@@ -11,7 +11,7 @@ use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::mem;
 
-use super::{Transducer, Reducing};
+use super::{Transducer, Reducing, StepResult};
 
 pub struct MapTransducer<F> {
     f: F
@@ -44,7 +44,7 @@ impl<R, F, I, O, OF, E> Reducing<I, OF, E> for MapReducer<R, F>
     }
 
     #[inline]
-    fn step(&mut self, value: I) -> Result<(), E> {
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
         self.rf.step((self.t.f)(value))
     }
 
@@ -93,11 +93,15 @@ impl<R, F, I, O, IO, OF, E> Reducing<I, OF, E> for MapcatReducer<R, F>
     }
 
     #[inline]
-    fn step(&mut self, value: I) -> Result<(), E> {
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
         for o in (self.t.f)(value) {
-            try!(self.rf.step(o));
+            match self.rf.step(o) {
+                Ok(StepResult::Continue) => (),
+                Ok(StepResult::Stop) => return Ok(StepResult::Stop),
+                Err(e) => return Err(e)
+            }
         }
-        Ok(())
+        Ok(StepResult::Continue)
     }
 
     fn complete(&mut self) -> Result<(), E> {
@@ -144,11 +148,12 @@ impl<R, F, I, OF, E> Reducing<I, OF, E> for FilterReducer<R, F>
     }
 
     #[inline]
-    fn step(&mut self, value: I) -> Result<(), E> {
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
         if (self.t.f)(&value) {
-            try!(self.rf.step(value));
+            self.rf.step(value)
+        } else {
+            Ok(StepResult::Continue)
         }
-        Ok(())
     }
 
     fn complete(&mut self) -> Result<(), E> {
@@ -199,14 +204,15 @@ impl<R, I, OF, E> Reducing<I, OF, E> for PartitionReducer<R, I>
     }
 
     #[inline]
-    fn step(&mut self, value: I) -> Result<(), E> {
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
         self.holder.push(value);
         if self.holder.len() == self.t.size {
             let mut other_holder = Vec::with_capacity(self.t.size);
             mem::swap(&mut other_holder, &mut self.holder);
-            try!(self.rf.step(other_holder));
+            self.rf.step(other_holder)
+        } else {
+            Ok(StepResult::Continue)
         }
-        Ok(())
     }
 
     fn complete(&mut self) -> Result<(), E> {
@@ -265,12 +271,21 @@ impl<R, I, OF, E> Reducing<I, OF, E> for TakeReducer<R>
     }
 
     #[inline]
-    fn step(&mut self, value: I) -> Result<(), E> {
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
         if self.taken < self.t.0 {
-            try!(self.rf.step(value));
             self.taken += 1;
+            match self.rf.step(value) {
+                Ok(StepResult::Continue) => if self.taken < self.t.0 {
+                    Ok(StepResult::Continue)
+                } else {
+                    Ok(StepResult::Stop)
+                },
+                Ok(StepResult::Stop) => Ok(StepResult::Stop),
+                Err(e) => Err(e)
+            }
+        } else {
+            Ok(StepResult::Stop)
         }
-        Ok(())
     }
 
     fn complete(&mut self) -> Result<(), E> {
