@@ -81,8 +81,6 @@ Transducers need to be applied to a source of data to have an effect.  The initi
 
 Implemented so far are transducer applications for:
 
-WARNING: not all of these are currently enabled.
-
 #### `Vec<T>`
 
 This comes in two forms `Into` that adds a `transduce_into` to vectors, this consumes the original vector; and the `Ref` trait that adds `transduce_ref` to vectors, this leaves the original vector unchanged and returns a new one based on feeding references to the source data through the transducer.
@@ -121,7 +119,9 @@ In order to do this an implementation of `Reducing` needs to be provided, to bui
 1. By passing this to the `new` function of a transducer a new reducing function is returned.
 2. Call `init` on the reducing function.
 3. For each piece of data call `step`.
-4. Finally `complete` returns the final data.
+4. Finally call `complete`.
+
+It is the responsibility of the implementation to retain access to the constructed data structure.
 
 ## License
 
