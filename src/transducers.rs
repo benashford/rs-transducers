@@ -235,34 +235,52 @@ pub fn partition_all<T>(num: usize) -> PartitionTransducer<T> {
     }
 }
 
-// pub struct TakeTransducer {
-//     size: usize,
-//     taken: usize
-// }
+pub struct TakeTransducer(usize);
 
-// impl<T> Transducer<T, T> for TakeTransducer {
-//     #[inline]
-//     fn accept(&mut self, value: Option<T>) -> TransductionResult<T> {
-//         if self.taken == self.size {
-//             TransductionResult::End
-//         } else {
-//             match value {
-//                 None => TransductionResult::End,
-//                 Some(value) => {
-//                     self.taken += 1;
-//                     TransductionResult::Some(value)
-//                 }
-//             }
-//         }
-//     }
-// }
+pub struct TakeReducer<RF> {
+    rf: RF,
+    taken: usize,
+    t: TakeTransducer
+}
 
-// pub fn take(num: usize) -> TakeTransducer {
-//     TakeTransducer {
-//         size: num,
-//         taken: 0
-//     }
-// }
+impl<RI> Transducer<RI> for TakeTransducer {
+    type RO = TakeReducer<RI>;
+
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        TakeReducer {
+            rf: reducing_fn,
+            taken: 0,
+            t: self
+        }
+    }
+}
+
+impl<R, I, OF, E> Reducing<I, OF, E> for TakeReducer<R>
+    where R: Reducing<I, OF, E> {
+
+    type Item = I;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<(), E> {
+        if self.taken < self.t.0 {
+            try!(self.rf.step(value));
+            self.taken += 1;
+        }
+        Ok(())
+    }
+
+    fn complete(&mut self) -> Result<(), E> {
+        self.rf.complete()
+    }
+}
+
+pub fn take(num: usize) -> TakeTransducer {
+    TakeTransducer(num)
+}
 
 // pub struct DropTransducer {
 //     size: usize,

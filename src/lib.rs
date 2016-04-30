@@ -52,7 +52,7 @@ impl <RI, RT, RO, AT, BT> Transducer<RI> for ComposedTransducer<AT, BT>
     }
 }
 
-pub fn compose<AT, BT>(b: BT, a: AT) -> ComposedTransducer<AT, BT> {
+pub fn compose<AT, BT>(a: AT, b: BT) -> ComposedTransducer<AT, BT> {
     ComposedTransducer {
         a: a,
         b: b
@@ -86,7 +86,7 @@ mod test {
         let source = vec![1, 2, 3];
         let ta = transducers::mapcat(duplicator);
         let tb = transducers::map(|x| x * 2);
-        let transducer = super::compose(ta, tb);
+        let transducer = super::compose(tb, ta);
         let result = source.transduce_into(transducer).unwrap();
         assert_eq!(vec![2, 2, 4, 4, 6, 6], result);
     }
@@ -125,19 +125,19 @@ mod test {
         }
     }
 
-    // #[test]
-    // fn test_take() {
-    //     let source = vec![1, 2, 3, 4, 5, 6, 7];
-    //     let transducer = transducers::take(5);
-    //     let result = source.transduce_drain(transducer);
-    //     assert_eq!(vec![1, 2, 3, 4, 5], result);
+    #[test]
+    fn test_take() {
+        let source = vec![1, 2, 3, 4, 5, 6, 7];
+        let transducer = transducers::take(5);
+        let result = source.transduce_into(transducer).unwrap();
+        assert_eq!(vec![1, 2, 3, 4, 5], result);
 
-    //     let source2 = vec![1, 2, 3, 4, 5, 6, 7];
-    //     let transducer2 = super::compose(transducers::take(2),
-    //                                      transducers::filter(|x| x % 2 == 0));
-    //     let result = source2.transduce_drain(transducer2);
-    //     assert_eq!(vec![2, 4], result);
-    // }
+        let source2 = vec![1, 2, 3, 4, 5, 6, 7];
+        let transducer2 = super::compose(transducers::take(2),
+                                         transducers::filter(|x| x % 2 == 0));
+        let result = source2.transduce_into(transducer2).unwrap();
+        assert_eq!(vec![2, 4], result);
+    }
 
     #[test]
     fn test_channels() {
