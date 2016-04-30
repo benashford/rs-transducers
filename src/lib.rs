@@ -107,14 +107,23 @@ mod test {
         assert_eq!(vec![2, 4], result);
     }
 
-    // #[test]
-    // fn test_partition() {
-    //     let source = vec![1, 2, 3, 4, 5, 6];
-    //     let transducer = transducers::partition(2);
-    //     let result = source.transduce_drain(transducer);
-    //     let expected_result:Vec<Vec<usize>> = vec![vec![1, 2], vec![3, 4], vec![5, 6]];
-    //     assert_eq!(expected_result, result);
-    // }
+    #[test]
+    fn test_partition() {
+        {
+            let source = vec![1, 2, 3, 4, 5, 6, 7];
+            let transducer = transducers::partition(2);
+            let result = source.transduce_into(transducer).unwrap();
+            let expected_result:Vec<Vec<usize>> = vec![vec![1, 2], vec![3, 4], vec![5, 6]];
+            assert_eq!(expected_result, result);
+        }
+        {
+            let source = vec![1, 2, 3, 4, 5, 6, 7];
+            let transducer = transducers::partition_all(2);
+            let result = source.transduce_into(transducer).unwrap();
+            let expected_result:Vec<Vec<usize>> = vec![vec![1, 2], vec![3, 4], vec![5, 6], vec![7]];
+            assert_eq!(expected_result, result);
+        }
+    }
 
     // #[test]
     // fn test_take() {

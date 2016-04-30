@@ -164,56 +164,76 @@ pub fn filter<F, T>(f: F) -> FilterTransducer<F>
     }
 }
 
-// pub struct PartitionTransducer<T> {
-//     size: usize,
-//     holder: Vec<T>,
-//     all: bool
-// }
+pub struct PartitionTransducer<T> {
+    size: usize,
+    all: bool,
+    t: PhantomData<T>
+}
 
-// impl<T> Transducer<T, Vec<T>> for PartitionTransducer<T> {
-//     #[inline]
-//     fn accept(&mut self, value: Option<T>) -> TransductionResult<Vec<T>> {
-//         match value {
-//             None => {
-//                 if self.all {
-//                     if self.holder.is_empty() {
-//                         TransductionResult::End
-//                     } else {
-//                         let pending = mem::replace(&mut self.holder, Vec::with_capacity(0));
-//                         TransductionResult::Some(pending)
-//                     }
-//                 } else {
-//                     TransductionResult::End
-//                 }
-//             },
-//             Some(value) => {
-//                 self.holder.push(value);
-//                 if self.holder.len() == self.size {
-//                     let pending = mem::replace(&mut self.holder, Vec::with_capacity(self.size));
-//                     TransductionResult::Some(pending)
-//                 } else {
-//                     TransductionResult::None
-//                 }
-//             }
-//         }
-//     }
-// }
+pub struct PartitionReducer<RF, T> {
+    t: PartitionTransducer<T>,
+    rf: RF,
+    holder: Vec<T>
+}
 
-// pub fn partition<T>(num: usize) -> PartitionTransducer<T> {
-//     PartitionTransducer {
-//         size: num,
-//         holder: Vec::with_capacity(num),
-//         all: false
-//     }
-// }
+impl<RI, T> Transducer<RI> for PartitionTransducer<T> {
+    type RO = PartitionReducer<RI, T>;
 
-// pub fn partition_all<T>(num: usize) -> PartitionTransducer<T> {
-//     PartitionTransducer {
-//         size: num,
-//         holder: Vec::with_capacity(num),
-//         all: true
-//     }
-// }
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        let size = self.size;
+        PartitionReducer {
+            t: self,
+            rf: reducing_fn,
+            holder: Vec::with_capacity(size)
+        }
+    }
+}
+
+impl<R, I, OF, E> Reducing<I, OF, E> for PartitionReducer<R, I>
+    where R: Reducing<Vec<I>, OF, E> {
+
+    type Item = Vec<I>;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<(), E> {
+        self.holder.push(value);
+        if self.holder.len() == self.t.size {
+            let mut other_holder = Vec::with_capacity(self.t.size);
+            mem::swap(&mut other_holder, &mut self.holder);
+            try!(self.rf.step(other_holder));
+        }
+        Ok(())
+    }
+
+    fn complete(&mut self) -> Result<(), E> {
+        if self.t.all {
+            let mut other_holder = Vec::new();
+            mem::swap(&mut other_holder, &mut self.holder);
+            try!(self.rf.step(other_holder));
+        }
+        self.rf.complete()
+    }
+}
+
+pub fn partition<T>(num: usize) -> PartitionTransducer<T> {
+    PartitionTransducer {
+        size: num,
+        all: false,
+        t: PhantomData
+    }
+}
+
+pub fn partition_all<T>(num: usize) -> PartitionTransducer<T> {
+    PartitionTransducer {
+        size: num,
+        all: true,
+        t: PhantomData
+    }
+}
 
 // pub struct TakeTransducer {
 //     size: usize,
