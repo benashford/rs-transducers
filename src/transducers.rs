@@ -114,35 +114,55 @@ pub fn mapcat<F, I, O, IO>(f: F) -> MapcatTransducer<F>
     }
 }
 
-// pub struct FilterTransducer<F> {
-//     f: F
-// }
+pub struct FilterTransducer<F> {
+     f: F
+}
 
-// impl<T, F> Transducer<T, T> for FilterTransducer<F>
-//     where F: Fn(&T) -> bool {
+pub struct FilterReducer<R, F> {
+    rf: R,
+    t: FilterTransducer<F>
+}
 
-//     #[inline]
-//     fn accept(&mut self, value: Option<T>) -> TransductionResult<T> {
-//         match value {
-//             None => TransductionResult::End,
-//             Some(value) => {
-//                 if (self.f)(&value) {
-//                     TransductionResult::Some(value)
-//                 } else {
-//                     TransductionResult::None
-//                 }
-//             }
-//         }
-//     }
-// }
+impl<F, RI> Transducer<RI> for FilterTransducer<F> {
+    type RO = FilterReducer<RI, F>;
 
-// pub fn filter<F, T>(f: F) -> FilterTransducer<F>
-//     where F: Fn(&T) -> bool {
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        FilterReducer {
+            rf: reducing_fn,
+            t: self
+        }
+    }
+}
 
-//     FilterTransducer {
-//         f: f
-//     }
-// }
+impl<R, F, I, OF, E> Reducing<I, OF, E> for FilterReducer<R, F>
+    where F: Fn(&I) -> bool,
+          R: Reducing<I, OF, E> {
+    type Item = I;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<(), E> {
+        if (self.t.f)(&value) {
+            try!(self.rf.step(value));
+        }
+        Ok(())
+    }
+
+    fn complete(&mut self) -> Result<(), E> {
+        self.rf.complete()
+    }
+}
+
+pub fn filter<F, T>(f: F) -> FilterTransducer<F>
+    where F: Fn(&T) -> bool {
+
+    FilterTransducer {
+        f: f
+    }
+}
 
 // pub struct PartitionTransducer<T> {
 //     size: usize,

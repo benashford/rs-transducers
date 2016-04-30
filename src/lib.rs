@@ -99,6 +99,14 @@ mod test {
         assert_eq!(vec![1, 1, 2, 2, 3, 3], result);
     }
 
+    #[test]
+    fn test_filter() {
+        let source = vec![1, 2, 3, 4, 5];
+        let transducer = transducers::filter(|x| x % 2 == 0);
+        let result = source.transduce_into(transducer).unwrap();
+        assert_eq!(vec![2, 4], result);
+    }
+
     // #[test]
     // fn test_partition() {
     //     let source = vec![1, 2, 3, 4, 5, 6];
