@@ -58,7 +58,9 @@ WARNING: not all these are currently enabled
 
 `take` and `drop` - takes a `usize` and return a transducer that implements `Transducer<I, I>` that takes or drops the appropriate number of elements.
 
-TODO - other transducers, at a minimum implement all those that Clojure does.  Specifically TODO are: `remove`, `take-while`, `drop-while`, `take-nth`, `replace`, `partition-by`, `keep`, `keep-indexed`, `map-indexed`, `interpose`, `dedupe`, `random-sample`.
+`take_while` and `drop_while` - take or drop values while the predicate remains true.
+
+TODO - other transducers, at a minimum implement all those that Clojure does.  Specifically TODO are: `replace`, `partition-by`, `keep`, `keep-indexed`, `map-indexed`, `interpose`, `dedupe`, `random-sample`.
 
 ### Implementing transducers
 

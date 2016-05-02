@@ -159,6 +159,22 @@ mod test {
     }
 
     #[test]
+    fn test_take_while() {
+        let source = vec![1, 2, 3, 4, 5, 6, 7];
+        let transducer = transducers::take_while(|x| *x <= 5);
+        let result = source.transduce_into(transducer).unwrap();
+        assert_eq!(vec![1, 2, 3, 4, 5], result);
+    }
+
+    #[test]
+    fn test_drop_while() {
+        let source = vec![1, 2, 3, 4, 5, 6, 7];
+        let transducer = transducers::drop_while(|x| *x <= 5);
+        let result = source.transduce_into(transducer).unwrap();
+        assert_eq!(vec![6, 7], result);
+    }
+
+    #[test]
     fn test_channels() {
         let transducer = transducers::map(|x| x + 1);
         let (mut tx, rx) = transducing_channel(transducer);

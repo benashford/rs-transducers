@@ -311,6 +311,109 @@ pub fn take(num: usize) -> TakeTransducer {
     TakeTransducer(num)
 }
 
+pub struct TakeWhileTransducer<F>(F);
+
+pub struct TakeWhileReducer<RF, F> {
+    rf: RF,
+    t: TakeWhileTransducer<F>
+}
+
+impl<RI, F> Transducer<RI> for TakeWhileTransducer<F> {
+    type RO = TakeWhileReducer<RI, F>;
+
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        TakeWhileReducer {
+            rf: reducing_fn,
+            t: self
+        }
+    }
+}
+
+impl<R, I, OF, E, F> Reducing<I, OF, E> for TakeWhileReducer<R, F>
+    where R: Reducing<I, OF, E>,
+          F: Fn(&I) -> bool {
+
+    type Item = I;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
+        if (self.t.0)(&value) {
+            self.rf.step(value)
+        } else {
+            Ok(StepResult::Stop)
+        }
+    }
+
+    fn complete(&mut self) -> Result<(), E> {
+        self.rf.complete()
+    }
+}
+
+pub fn take_while<F, T>(pred: F) -> TakeWhileTransducer<F>
+    where F: Fn(&T) -> bool {
+
+    TakeWhileTransducer(pred)
+}
+
+pub struct DropWhileTransducer<F>(F);
+
+pub struct DropWhileReducer<RF, F> {
+    rf: RF,
+    t: DropWhileTransducer<F>,
+    done: bool
+}
+
+impl<RI, F> Transducer<RI> for DropWhileTransducer<F> {
+    type RO = DropWhileReducer<RI, F>;
+
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        DropWhileReducer {
+            rf: reducing_fn,
+            t: self,
+            done: false
+        }
+    }
+}
+
+impl<R, I, OF, E, F> Reducing<I, OF, E> for DropWhileReducer<R, F>
+    where R: Reducing<I, OF, E>,
+          F: Fn(&I) -> bool {
+
+    type Item = I;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
+        if self.done {
+            self.rf.step(value)
+        } else {
+            if !(self.t.0)(&value) {
+                self.done = true;
+                self.rf.step(value)
+            } else {
+                Ok(StepResult::Continue)
+            }
+        }
+    }
+
+    fn complete(&mut self) -> Result<(), E> {
+        self.rf.complete()
+    }
+}
+
+pub fn drop_while<F, T>(pred: F) -> DropWhileTransducer<F>
+    where F: Fn(&T) -> bool {
+
+    DropWhileTransducer(pred)
+}
+
 pub struct DropTransducer(usize);
 
 pub struct DropReducer<RF> {
