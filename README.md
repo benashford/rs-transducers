@@ -1,6 +1,7 @@
 # `rs-transducers`
 
 [![Build Status](https://travis-ci.org/benashford/rs-transducers.svg?branch=master)](https://travis-ci.org/benashford/rs-transducers)
+[![](http://meritbadge.herokuapp.com/rs_transducers)](https://crates.io/crates/rs_transducers)
 
 An attempt at implementing Clojure style transducers in Rust.
 
