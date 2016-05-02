@@ -10,8 +10,6 @@
 pub mod transducers;
 pub mod applications;
 
-use std::marker::PhantomData;
-
 pub enum StepResult {
     Continue,
     Stop

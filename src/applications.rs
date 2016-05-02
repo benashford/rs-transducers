@@ -49,7 +49,7 @@ pub mod vec {
     impl<X> Ref for Vec<X> {
         type Input = X;
 
-        fn transduce_ref<'a, T, O, RO, E>(&'a self, mut transducer: T) -> Result<Vec<O>, E>
+        fn transduce_ref<'a, T, O, RO, E>(&'a self, transducer: T) -> Result<Vec<O>, E>
             where RO: Reducing<&'a Self::Input, Vec<O>, E>,
                   T: Transducer<VecReducer<O>, RO=RO> {
             let res = Rc::new(RefCell::new(Vec::with_capacity(self.len())));
@@ -104,7 +104,6 @@ pub mod vec {
 pub mod iter {
     use std::cell::RefCell;
     use std::collections::VecDeque;
-    use std::marker::PhantomData;
     use std::rc::Rc;
 
     use ::{Transducer, Reducing, StepResult};
@@ -174,16 +173,16 @@ pub mod iter {
                     match self.underlying.next() {
                         None => {
                             self.runoff = true;
-                            self.rf.complete();
+                            self.rf.complete().unwrap();
                         },
                         Some(value) => {
                             match self.rf.step(value) {
                                 Ok(StepResult::Continue) => (),
                                 Ok(StepResult::Stop) => {
                                     self.runoff = true;
-                                    self.rf.complete();
+                                    self.rf.complete().unwrap();
                                 },
-                                Err(e) => unreachable!()
+                                Err(_) => unreachable!()
                             }
                         }
                     }
