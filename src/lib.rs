@@ -145,6 +145,14 @@ mod test {
     }
 
     #[test]
+    fn test_drop() {
+        let source = vec![1, 2, 3, 4, 5, 6, 7];
+        let transducer = transducers::drop(2);
+        let result = source.transduce_into(transducer).unwrap();
+        assert_eq!(vec![3, 4, 5, 6, 7], result);
+    }
+
+    #[test]
     fn test_channels() {
         let transducer = transducers::map(|x| x + 1);
         let (mut tx, rx) = transducing_channel(transducer);

@@ -297,50 +297,50 @@ pub fn take(num: usize) -> TakeTransducer {
     TakeTransducer(num)
 }
 
-// pub struct DropTransducer {
-//     size: usize,
-//     dropped: usize
-// }
+pub struct DropTransducer(usize);
 
-// impl<T> Transducer<T, T> for DropTransducer {
-//     #[inline]
-//     fn accept(&mut self, value: Option<T>) -> TransductionResult<T> {
-//         match value {
-//             None => TransductionResult::End,
-//             Some(value) => {
-//                 if self.dropped == self.size {
-//                     TransductionResult::Some(value)
-//                 } else {
-//                     self.dropped += 1;
-//                     TransductionResult::None
-//                 }
-//             }
-//         }
-//     }
-// }
+pub struct DropReducer<RF> {
+    rf: RF,
+    dropped: usize,
+    d: DropTransducer
+}
 
-// pub fn drop(num: usize) -> DropTransducer {
-//     DropTransducer {
-//         size: num,
-//         dropped: 0
-//     }
-// }
+impl<RI> Transducer<RI> for DropTransducer {
+    type RO = DropReducer<RI>;
 
-// #[cfg(test)]
-// mod test {
-//     use super::super::applications::vec::Drain;
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        DropReducer {
+            rf: reducing_fn,
+            dropped: 0,
+            d: self
+        }
+    }
+}
 
-//     #[test]
-//     fn test_mapcat() {
-//         let source = vec![1, 2, 3];
-//         let transducer = super::mapcat(|x| {
-//             let mut v = Vec::new();
-//             for i in 0..x {
-//                 v.push(i)
-//             }
-//             v
-//         });
-//         let result = source.transduce_drain(transducer);
-//         assert_eq!(vec![0, 0, 1, 0, 1, 2], result);
-//     }
-// }
+impl<R, I, OF, E> Reducing<I, OF, E> for DropReducer<R>
+    where R: Reducing<I, OF, E> {
+
+    type Item = I;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
+        if self.dropped < self.d.0 {
+            self.dropped += 1;
+            Ok(StepResult::Continue)
+        } else {
+            self.rf.step(value)
+        }
+    }
+
+    fn complete(&mut self) -> Result<(), E> {
+        self.rf.complete()
+    }
+}
+
+pub fn drop(size: usize) -> DropTransducer {
+    DropTransducer(size)
+}
