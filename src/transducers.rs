@@ -118,7 +118,8 @@ pub fn mapcat<F, I, O, IO>(f: F) -> MapcatTransducer<F>
 }
 
 pub struct FilterTransducer<F> {
-     f: F
+    f: F,
+    inclusive: bool
 }
 
 pub struct FilterReducer<R, F> {
@@ -148,7 +149,11 @@ impl<R, F, I, OF, E> Reducing<I, OF, E> for FilterReducer<R, F>
 
     #[inline]
     fn step(&mut self, value: I) -> Result<StepResult, E> {
-        if (self.t.f)(&value) {
+        let mut include = (self.t.f)(&value);
+        if !self.t.inclusive {
+            include = !include;
+        }
+        if include {
             self.rf.step(value)
         } else {
             Ok(StepResult::Continue)
@@ -164,7 +169,17 @@ pub fn filter<F, T>(f: F) -> FilterTransducer<F>
     where F: Fn(&T) -> bool {
 
     FilterTransducer {
-        f: f
+        f: f,
+        inclusive: true
+    }
+}
+
+pub fn remove<F, T>(f: F) -> FilterTransducer<F>
+    where F: Fn(&T) -> bool {
+
+    FilterTransducer {
+        f: f,
+        inclusive: false
     }
 }
 
