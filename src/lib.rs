@@ -64,6 +64,7 @@ pub fn compose<AT, BT>(a: AT, b: BT) -> ComposedTransducer<AT, BT> {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
     use std::thread;
 
     use super::transducers;
@@ -172,6 +173,17 @@ mod test {
         let transducer = transducers::drop_while(|x| *x <= 5);
         let result = source.transduce_into(transducer).unwrap();
         assert_eq!(vec![6, 7], result);
+    }
+
+    #[test]
+    fn test_replace() {
+        let source = vec![1, 2, 3, 1, 2, 3, 1, 2, 3];
+        let mut replacements = HashMap::new();
+        replacements.insert(1, 4);
+        replacements.insert(3, 7);
+        let transducer = transducers::replace(replacements);
+        let result = source.transduce_into(transducer).unwrap();
+        assert_eq!(vec![4, 2, 7, 4, 2, 7, 4, 2, 7], result);
     }
 
     #[test]

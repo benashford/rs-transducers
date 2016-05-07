@@ -7,6 +7,8 @@
  * option. This file may not be copied, modified, or distributed
  * except according to those terms.
  */
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::marker::PhantomData;
 use std::mem;
 
@@ -460,4 +462,50 @@ impl<R, I, OF, E> Reducing<I, OF, E> for DropReducer<R>
 
 pub fn drop(size: usize) -> DropTransducer {
     DropTransducer(size)
+}
+
+pub struct ReplaceTransducer<T>(HashMap<T, T>);
+
+pub struct ReplaceReducer<RF, T> {
+    rf: RF,
+    t: ReplaceTransducer<T>
+}
+
+impl <'a, RI, T> Transducer<RI> for ReplaceTransducer<T> {
+    type RO = ReplaceReducer<RI, T>;
+
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        ReplaceReducer {
+            rf: reducing_fn,
+            t: self
+        }
+    }
+}
+
+impl<'a, R, I, OF, E> Reducing<I, OF, E> for ReplaceReducer<R, I>
+    where I: Eq + Hash + Clone,
+          R: Reducing<I, OF, E> {
+
+    type Item = I;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
+        let v:I = match self.t.0.get(&value) {
+            Some(val) => val.clone(),
+            None => value
+        };
+        self.rf.step(v)
+    }
+
+    fn complete(&mut self) -> Result<(), E> {
+        self.rf.complete()
+    }
+}
+
+pub fn replace<T>(replacements: HashMap<T, T>) -> ReplaceTransducer<T> {
+    ReplaceTransducer(replacements)
 }

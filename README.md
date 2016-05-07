@@ -46,8 +46,6 @@ let transducer = rs_transducers::compose(transducers::drop(5),
 
 ### Provided transducers
 
-WARNING: not all these are currently enabled
-
 `map` - takes a function of type `Fn(I) -> O` and returns a `MapTransducer` that implements `Transducer<I, O>`.
 
 `mapcat` - takes a function of type `Fn(I) -> OI` where `OI` implementes `IntoIterator<Item=O>` and returns a `MapcatTransducer` that implements `Transducer<I, O>`.
@@ -60,7 +58,9 @@ WARNING: not all these are currently enabled
 
 `take_while` and `drop_while` - take or drop values while the predicate remains true.
 
-TODO - other transducers, at a minimum implement all those that Clojure does.  Specifically TODO are: `replace`, `partition-by`, `keep`, `keep-indexed`, `map-indexed`, `interpose`, `dedupe`, `random-sample`.
+`replace` - takes a `HashMap<T, T>` (where `T` must implement `Clone`) and returns a `ReplaceTransducer` which will replace each instance of a given key with a clone of the corresponding value.
+
+TODO - other transducers, at a minimum implement all those that Clojure does.  Specifically TODO are: `partition-by`, `keep`, `keep-indexed`, `map-indexed`, `interpose`, `dedupe`, `random-sample`.
 
 ### Implementing transducers
 
