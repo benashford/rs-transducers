@@ -187,6 +187,15 @@ mod test {
     }
 
     #[test]
+    fn test_partition_by() {
+        let source = vec![1, 2, 3, 4, 5, 6];
+        let transducer = transducers::partition_by(|&x| x > 3);
+        let result = source.transduce_into(transducer).unwrap();
+        let expected_result:Vec<Vec<usize>> = vec![vec![1, 2, 3], vec![4, 5, 6]];
+        assert_eq!(expected_result, result);
+    }
+
+    #[test]
     fn test_channels() {
         let transducer = transducers::map(|x| x + 1);
         let (mut tx, rx) = transducing_channel(transducer);

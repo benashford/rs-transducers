@@ -509,3 +509,89 @@ impl<'a, R, I, OF, E> Reducing<I, OF, E> for ReplaceReducer<R, I>
 pub fn replace<T>(replacements: HashMap<T, T>) -> ReplaceTransducer<T> {
     ReplaceTransducer(replacements)
 }
+
+pub struct PartitionByTransducer<F, T, R>
+    where F: Fn(&T) -> R {
+
+    f: F,
+    t: PhantomData<T>
+}
+
+pub struct PartitionByReducer<RF, F, T, R>
+    where F: Fn(&T) -> R {
+
+    rf: RF,
+    t: PartitionByTransducer<F, T, R>,
+    holder: Vec<T>,
+    last_res: Option<R>
+}
+
+impl<RI, F, T, R> Transducer<RI> for PartitionByTransducer<F, T, R>
+    where F: Fn(&T) -> R {
+
+    type RO = PartitionByReducer<RI, F, T, R>;
+
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        PartitionByReducer {
+            rf: reducing_fn,
+            t: self,
+            holder: Vec::new(),
+            last_res: None
+        }
+    }
+}
+
+impl<R, I, OF, E, F, X> Reducing<I, OF, E> for PartitionByReducer<R, F, I, X>
+    where R: Reducing<Vec<I>, OF, E>,
+          F: Fn(&I) -> X,
+          X: Eq {
+
+    type Item = Vec<I>;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
+        let last_res = self.last_res.take();
+        match last_res {
+            None => {
+                self.last_res = Some((self.t.f)(&value));
+                self.holder.push(value);
+                Ok(StepResult::Continue)
+            },
+            Some(ref res) => {
+                let new_res = (self.t.f)(&value);
+                if res == &new_res {
+                    self.holder.push(value);
+                    Ok(StepResult::Continue)
+                } else {
+                    self.last_res = Some(new_res);
+                    let mut other_holder = Vec::new();
+                    mem::swap(&mut other_holder, &mut self.holder);
+                    self.holder.push(value);
+                    self.rf.step(other_holder)
+                }
+            }
+        }
+    }
+
+    fn complete(&mut self) -> Result<(), E> {
+        if self.holder.len() > 0 {
+            let mut other_holder = Vec::new();
+            mem::swap(&mut other_holder, &mut self.holder);
+            try!(self.rf.step(other_holder));
+        }
+        self.rf.complete()
+    }
+}
+
+pub fn partition_by<F, T, R>(partition_func: F) -> PartitionByTransducer<F, T, R>
+    where F: Fn(&T) -> R {
+
+    PartitionByTransducer {
+        f: partition_func,
+        t: PhantomData
+    }
+}
