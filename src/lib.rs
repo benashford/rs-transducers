@@ -196,6 +196,21 @@ mod test {
     }
 
     #[test]
+    fn test_keep() {
+        let source = vec![1, 2, 3, 4, 5, 6];
+        let transducer = transducers::keep(|x| {
+            if x % 2 == 0 {
+                Some(x)
+            } else {
+                None
+            }
+        });
+        let result = source.transduce_into(transducer).unwrap();
+        let expected_result = vec![2, 4, 6];
+        assert_eq!(expected_result, result);
+    }
+
+    #[test]
     fn test_channels() {
         let transducer = transducers::map(|x| x + 1);
         let (mut tx, rx) = transducing_channel(transducer);

@@ -185,6 +185,53 @@ pub fn remove<F, T>(f: F) -> FilterTransducer<F>
     }
 }
 
+pub struct KeepTransducer<F>(F);
+
+pub struct KeepReducer<R, F> {
+    rf: R,
+    t: KeepTransducer<F>
+}
+
+impl<F, RI> Transducer<RI> for KeepTransducer<F> {
+    type RO = KeepReducer<RI, F>;
+
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        KeepReducer {
+            rf: reducing_fn,
+            t: self
+        }
+    }
+}
+
+impl<R, F, I, O, OF, E> Reducing<I, OF, E> for KeepReducer<R, F>
+    where F: Fn(I) -> Option<O>,
+          R: Reducing<O, OF, E> {
+
+    type Item = O;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
+        match (self.t.0)(value) {
+            Some(o) => self.rf.step(o),
+            None => Ok(StepResult::Continue)
+        }
+    }
+
+    fn complete(&mut self) -> Result<(), E> {
+        self.rf.complete()
+    }
+}
+
+pub fn keep<F, I, O>(f: F) -> KeepTransducer<F>
+    where F: Fn(I) -> Option<O> {
+
+    KeepTransducer(f)
+}
+
 pub struct PartitionTransducer<T> {
     size: usize,
     all: bool,
