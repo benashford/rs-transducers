@@ -46,7 +46,7 @@ let transducer = rs_transducers::compose(transducers::drop(5),
 
 ### Provided transducers
 
-`map` - takes a function of type `Fn(I) -> O` and returns a `MapTransducer` that implements `Transducer<I, O>`.
+`map` - takes a function of type `Fn(I) -> O` and returns a `MapTransducer` that implements `Transducer<I, O>`.  Also `map_indexed` which takes a function of type `Fn(usize, I) -> O`.
 
 `mapcat` - takes a function of type `Fn(I) -> OI` where `OI` implementes `IntoIterator<Item=O>` and returns a `MapcatTransducer` that implements `Transducer<I, O>`.
 
@@ -62,7 +62,7 @@ let transducer = rs_transducers::compose(transducers::drop(5),
 
 `replace` - takes a `HashMap<T, T>` (where `T` must implement `Clone`) and returns a `ReplaceTransducer` which will replace each instance of a given key with a clone of the corresponding value.
 
-TODO - other transducers, at a minimum implement all those that Clojure does.  Specifically TODO are: `map-indexed`, `interpose`, `dedupe`, `random-sample`.
+TODO - other transducers, at a minimum implement all those that Clojure does.  Specifically TODO are: `interpose`, `dedupe`, `random-sample`.
 
 ### Implementing transducers
 

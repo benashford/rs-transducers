@@ -62,6 +62,58 @@ pub fn map<F, I, O>(f: F) -> MapTransducer<F>
     }
 }
 
+pub struct MapIndexedTransducer<F> {
+    f: F
+}
+
+pub struct MapIndexedReducer<R, F> {
+    rf: R,
+    t: MapIndexedTransducer<F>,
+    count: usize
+}
+
+impl<F, RI> Transducer<RI> for MapIndexedTransducer<F> {
+    type RO = MapIndexedReducer<RI, F>;
+
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        MapIndexedReducer {
+            rf: reducing_fn,
+            t: self,
+            count: 0
+        }
+    }
+}
+
+impl<R, F, I, O, OF, E> Reducing<I, OF, E> for MapIndexedReducer<R, F>
+    where F: Fn(usize, I) -> O,
+          R: Reducing<O, OF, E> {
+
+    type Item = O;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
+        let idx = self.count;
+        self.count += 1;
+        self.rf.step((self.t.f)(idx, value))
+    }
+
+    fn complete(&mut self) -> Result<(), E> {
+        self.rf.complete()
+    }
+}
+
+pub fn map_indexed<F, I, O>(f: F) -> MapIndexedTransducer<F>
+    where F: Fn(usize, I) -> O {
+
+    MapIndexedTransducer {
+        f: f
+    }
+}
+
 pub struct MapcatTransducer<F> {
     f: F
 }

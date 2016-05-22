@@ -226,6 +226,15 @@ mod test {
     }
 
     #[test]
+    fn test_map_indexed() {
+        let source = vec![1, 2, 3, 4, 5, 6];
+        let transducer = transducers::map_indexed(|idx, x| x + idx);
+        let result = source.transduce_into(transducer).unwrap();
+        let expected_result = vec![1, 3, 5, 7, 9, 11];
+        assert_eq!(expected_result, result);
+    }
+
+    #[test]
     fn test_channels() {
         let transducer = transducers::map(|x| x + 1);
         let (mut tx, rx) = transducing_channel(transducer);
