@@ -66,7 +66,7 @@ let transducer = rs_transducers::compose(transducers::drop(5),
 
 `dedupe` - removes consecutive duplicates.
 
-TODO - other transducers, at a minimum implement all those that Clojure does.  Specifically TODO are: `random-sample`.
+The only `clojure.core` transducer not implemented here is `random-sample`, this is due to me trying to avoid all dependencies from this package.  It is trivial to implement such a transducer in any application however.
 
 ### Implementing transducers
 
