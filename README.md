@@ -76,11 +76,17 @@ Implementing a transducer, therefore requires implementing two traits `Transduce
 
 #### `Transducer`
 
-TBC
+A `Transducer` implemented one function `new` which takes one `Reducing` function and returns another one.
 
 #### `Reducing`
 
-TBC
+The `Reducing` trait requires three functions to be implemented:
+
+`init` (this may be removed in future versions as it currently is not needed) - any underlying `Reducing` function must have its `init` function called.
+
+`step` - this is called for each value passing through.  Each call can call the underlying `step` function zero, one or many times.  The result is `Result<StepResult, E>`, implementations must ensure the result of any underlying `step` is propagated appropriately.  `StepResult` is an enum with two options `Continue` and `Stop` which can be used to terminate the reduction process early (for example see `take`).
+
+`complete` - a transducer can be stateful (e.g. `partition_all`), calling this function ensures that any such state is flushed at the end of the process.  Implementations can call `step` on the underlying `Reducing` function as often as required, and must complete by calling `complete` on the underlying `Reducing`.
 
 ## Applications
 
@@ -127,10 +133,18 @@ In order to do this an implementation of `Reducing` needs to be provided, to bui
 
 1. By passing this to the `new` function of a transducer a new reducing function is returned.
 2. Call `init` on the reducing function.
-3. For each piece of data call `step`.
+3. For each piece of data call `step`.  Taking into account the result, stopping early if `StepResult::Stop` is returned.
 4. Finally call `complete`.
 
 It is the responsibility of the implementation to retain access to the constructed data structure.
+
+## Differences between `rs-transducers` and Clojure's transducers
+
+Two of the biggest differences are:
+
+1. Transducers are not reusable, they're fully consumed when producing the final `Reducing` function.  This was done to make lifecycles simpler.
+
+2. A limited set of application functions.
 
 ## License
 
