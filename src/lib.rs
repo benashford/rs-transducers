@@ -244,6 +244,15 @@ mod test {
     }
 
     #[test]
+    fn test_dedupe() {
+        let source = vec![1, 2, 2, 2, 3, 3, 2, 3, 4];
+        let transducer = transducers::dedupe();
+        let result = source.transduce_into(transducer).unwrap();
+        let expected_result = vec![1, 2, 3, 2, 3, 4];
+        assert_eq!(expected_result, result);
+    }
+
+    #[test]
     fn test_channels() {
         let transducer = transducers::map(|x| x + 1);
         let (mut tx, rx) = transducing_channel(transducer);

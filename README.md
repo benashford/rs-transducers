@@ -64,7 +64,9 @@ let transducer = rs_transducers::compose(transducers::drop(5),
 
 `interpose` - takes a cloneable value `T` and returns a transducer which, when applied, interposes that value with each value that goes through the reducing function.
 
-TODO - other transducers, at a minimum implement all those that Clojure does.  Specifically TODO are: `dedupe`, `random-sample`.
+`dedupe` - removes consecutive duplicates.
+
+TODO - other transducers, at a minimum implement all those that Clojure does.  Specifically TODO are: `random-sample`.
 
 ### Implementing transducers
 

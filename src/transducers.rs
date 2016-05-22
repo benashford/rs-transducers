@@ -798,3 +798,53 @@ impl<R, I, OF, E> Reducing<I, OF, E> for InterposeReducer<R, I>
 pub fn interpose<T>(separator: T) -> InterposeTransducer<T> {
     InterposeTransducer(separator)
 }
+
+pub struct DedupeTransducer<T>(PhantomData<T>);
+
+pub struct DedupeReducer<R, T> {
+    last_val: Option<T>,
+    rf: R
+}
+
+impl<RI, T> Transducer<RI> for DedupeTransducer<T> {
+    type RO = DedupeReducer<RI, T>;
+
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        DedupeReducer {
+            last_val: None,
+            rf: reducing_fn
+        }
+    }
+}
+
+impl<R, I, OF, E> Reducing<I, OF, E> for DedupeReducer<R, I>
+    where I: Eq + Clone,
+          R: Reducing<I, OF, E> {
+
+    type Item = I;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
+        if self.last_val.is_none() {
+            self.last_val = Some(value.clone());
+            self.rf.step(value)
+        } else if self.last_val.as_ref().unwrap() == &value {
+            Ok(StepResult::Continue)
+        } else {
+            self.last_val = Some(value.clone());
+            self.rf.step(value)
+        }
+    }
+
+    fn complete(&mut self) -> Result<(), E> {
+        self.rf.complete()
+    }
+}
+
+pub fn dedupe<T>() -> DedupeTransducer<T> {
+    DedupeTransducer(PhantomData)
+}
