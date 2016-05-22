@@ -235,6 +235,15 @@ mod test {
     }
 
     #[test]
+    fn test_interpose() {
+        let source = vec![1, 2, 3, 4];
+        let transducer = transducers::interpose(0);
+        let result = source.transduce_into(transducer).unwrap();
+        let expected_result = vec![1, 0, 2, 0, 3, 0, 4];
+        assert_eq!(expected_result, result);
+    }
+
+    #[test]
     fn test_channels() {
         let transducer = transducers::map(|x| x + 1);
         let (mut tx, rx) = transducing_channel(transducer);

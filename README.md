@@ -62,7 +62,9 @@ let transducer = rs_transducers::compose(transducers::drop(5),
 
 `replace` - takes a `HashMap<T, T>` (where `T` must implement `Clone`) and returns a `ReplaceTransducer` which will replace each instance of a given key with a clone of the corresponding value.
 
-TODO - other transducers, at a minimum implement all those that Clojure does.  Specifically TODO are: `interpose`, `dedupe`, `random-sample`.
+`interpose` - takes a cloneable value `T` and returns a transducer which, when applied, interposes that value with each value that goes through the reducing function.
+
+TODO - other transducers, at a minimum implement all those that Clojure does.  Specifically TODO are: `dedupe`, `random-sample`.
 
 ### Implementing transducers
 

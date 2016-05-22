@@ -746,3 +746,55 @@ pub fn partition_by<F, T, R>(partition_func: F) -> PartitionByTransducer<F, T, R
         t: PhantomData
     }
 }
+
+pub struct InterposeTransducer<T>(T);
+
+pub struct InterposeReducer<R, T> {
+    first: bool,
+    rf: R,
+    t: InterposeTransducer<T>
+}
+
+impl<RI, T> Transducer<RI> for InterposeTransducer<T> {
+    type RO = InterposeReducer<RI, T>;
+
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        InterposeReducer {
+            first: true,
+            rf: reducing_fn,
+            t: self
+        }
+    }
+}
+
+impl<R, I, OF, E> Reducing<I, OF, E> for InterposeReducer<R, I>
+    where I: Clone,
+          R: Reducing<I, OF, E> {
+
+    type Item = I;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
+        if self.first {
+            self.first = false;
+        } else {
+            match try!(self.rf.step(self.t.0.clone())) {
+                StepResult::Continue => (),
+                StepResult::Stop => return Ok(StepResult::Stop)
+            }
+        }
+        self.rf.step(value)
+    }
+
+    fn complete(&mut self) -> Result<(), E> {
+        self.rf.complete()
+    }
+}
+
+pub fn interpose<T>(separator: T) -> InterposeTransducer<T> {
+    InterposeTransducer(separator)
+}
