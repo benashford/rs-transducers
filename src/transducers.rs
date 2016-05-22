@@ -232,6 +232,58 @@ pub fn keep<F, I, O>(f: F) -> KeepTransducer<F>
     KeepTransducer(f)
 }
 
+pub struct KeepIndexedTransducer<F>(F);
+
+pub struct KeepIndexedReducer<R, F> {
+    rf: R,
+    t: KeepIndexedTransducer<F>,
+    count: usize
+}
+
+impl<F, RI> Transducer<RI> for KeepIndexedTransducer<F> {
+    type RO = KeepIndexedReducer<RI, F>;
+
+    fn new(self, reducing_fn: RI) -> Self::RO {
+        KeepIndexedReducer {
+            rf: reducing_fn,
+            t: self,
+            count: 0
+        }
+    }
+}
+
+impl<R, F, I, O, OF, E> Reducing<I, OF, E> for KeepIndexedReducer<R, F>
+    where F: Fn(usize, I) -> Option<O>,
+          R: Reducing<O, OF, E> {
+
+    type Item = O;
+
+    fn init(&mut self) {
+        self.rf.init();
+    }
+
+    #[inline]
+    fn step(&mut self, value: I) -> Result<StepResult, E> {
+        let idx = self.count;
+        self.count += 1;
+
+        match (self.t.0)(idx, value) {
+            Some(o) => self.rf.step(o),
+            None => Ok(StepResult::Continue)
+        }
+    }
+
+    fn complete(&mut self) -> Result<(), E> {
+        self.rf.complete()
+    }
+}
+
+pub fn keep_indexed<F, I, O>(f: F) -> KeepIndexedTransducer<F>
+    where F: Fn(usize, I) -> Option<O> {
+
+    KeepIndexedTransducer(f)
+}
+
 pub struct PartitionTransducer<T> {
     size: usize,
     all: bool,
